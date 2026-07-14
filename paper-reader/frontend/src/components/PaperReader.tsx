@@ -14,6 +14,8 @@ interface Props {
   targetCitation: CitationTarget | null;
   pageWidth?: number;
   onPageChange?: (page: number) => void;
+  pairedSourceText?: string;
+  onSourceSelection?: (text: string) => void;
 }
 
 interface SelectionHighlight {
@@ -30,12 +32,19 @@ interface SearchablePdfDocument {
   }>;
 }
 
-export function PaperReader({ paper, targetCitation, pageWidth = 720, onPageChange }: Props) {
+export function PaperReader({
+  paper,
+  targetCitation,
+  pageWidth = 720,
+  onPageChange,
+  pairedSourceText = "",
+  onSourceSelection,
+}: Props) {
   const [pageCount, setPageCount] = useState(0);
   const [page, setPage] = useState(1);
   const [zoom, setZoom] = useState(100);
   const [fitPageWidth, setFitPageWidth] = useState(pageWidth);
-  const [pageSize, setPageSize] = useState({ width: 0, height: 0 });
+  const [textLayerVersion, setTextLayerVersion] = useState(0);
   const [pdfDocument, setPdfDocument] = useState<SearchablePdfDocument | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearchQuery, setActiveSearchQuery] = useState("");
@@ -60,6 +69,7 @@ export function PaperReader({ paper, targetCitation, pageWidth = 720, onPageChan
     setSelectedTranslation("");
     setTranslationLoading(false);
     setTranslationError("");
+    onSourceSelection?.("");
     window.getSelection()?.removeAllRanges();
   };
 
@@ -88,7 +98,7 @@ export function PaperReader({ paper, targetCitation, pageWidth = 720, onPageChan
     setPage(1);
     setPageCount(0);
     setZoom(100);
-    setPageSize({ width: 0, height: 0 });
+    setTextLayerVersion(0);
     setPdfDocument(null);
     setSearchQuery("");
     setActiveSearchQuery("");
@@ -102,6 +112,33 @@ export function PaperReader({ paper, targetCitation, pageWidth = 720, onPageChan
   useEffect(() => {
     clearSelection();
   }, [page, zoom]);
+
+  useEffect(() => {
+    const wrapper = pageWrapRef.current;
+    if (!wrapper) return;
+    const spans = Array.from(wrapper.querySelectorAll<HTMLElement>(".textLayer span"));
+    spans.forEach((span) => span.classList.remove("paired-source-highlight"));
+    const target = pairedSourceText
+      .toLocaleLowerCase()
+      .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "");
+    if (target.length < 3) return;
+
+    spans.forEach((span) => {
+      const candidate = (span.textContent || "")
+        .toLocaleLowerCase()
+        .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "");
+      if (
+        candidate.length >= 4
+        && (target.includes(candidate) || candidate.includes(target))
+      ) {
+        span.classList.add("paired-source-highlight");
+      }
+    });
+
+    return () => {
+      spans.forEach((span) => span.classList.remove("paired-source-highlight"));
+    };
+  }, [page, pairedSourceText, textLayerVersion, zoom]);
 
   const searchDocument = async () => {
     const query = searchQuery.trim().toLocaleLowerCase();
@@ -204,20 +241,11 @@ export function PaperReader({ paper, targetCitation, pageWidth = 720, onPageChan
     event.stopPropagation();
     setSelectedText(text);
     setSelectionHighlights(highlights);
+    onSourceSelection?.(text);
     void translateSelectedText(text);
   };
 
-  const bbox = targetCitation?.page === page ? targetCitation.bbox : null;
   const renderedPageWidth = Math.round(fitPageWidth * zoom / 100);
-  const scale = pageSize.width ? renderedPageWidth / pageSize.width : 1;
-  const highlight = bbox?.length === 4
-    ? {
-        left: bbox[0] * scale,
-        top: bbox[1] * scale,
-        width: Math.max(10, (bbox[2] - bbox[0]) * scale),
-        height: Math.max(10, (bbox[3] - bbox[1]) * scale)
-      }
-    : null;
 
   if (!paper) {
     return (
@@ -291,10 +319,7 @@ export function PaperReader({ paper, targetCitation, pageWidth = 720, onPageChan
                 width={renderedPageWidth}
                 renderTextLayer
                 renderAnnotationLayer
-                onLoadSuccess={(loadedPage) => {
-                  const viewport = loadedPage.getViewport({ scale: 1 });
-                  setPageSize({ width: viewport.width, height: viewport.height });
-                }}
+                onRenderTextLayerSuccess={() => setTextLayerVersion((value) => value + 1)}
               />
               {selectionHighlights.map((selectionHighlight, index) => (
                 <div
@@ -304,13 +329,6 @@ export function PaperReader({ paper, targetCitation, pageWidth = 720, onPageChan
                   aria-hidden="true"
                 />
               ))}
-              {highlight && (
-                <div
-                  className="citation-highlight"
-                  style={highlight}
-                  aria-label="引用内容位置"
-                />
-              )}
             </div>
           </Document>
           {selectedText && (

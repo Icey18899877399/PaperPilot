@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 
 import { api } from "../api";
-import type { Paper, PaperChunk, PaperContentsResponse } from "../types";
+import type { CitationTarget, Paper, PaperChunk, PaperContentsResponse } from "../types";
 import { PaperReader } from "./PaperReader";
 
 interface Props {
   paper: Paper | null;
+  compact?: boolean;
+  onLocate?: (target: CitationTarget) => void;
 }
 
 const filters = [
@@ -16,7 +18,7 @@ const filters = [
   { kind: "text", label: "正文" }
 ];
 
-export function StructuredContentView({ paper }: Props) {
+export function StructuredContentView({ paper, compact = false, onLocate }: Props) {
   const [kind, setKind] = useState("table");
   const [contents, setContents] = useState<PaperContentsResponse | null>(null);
   const [selected, setSelected] = useState<PaperChunk | null>(null);
@@ -37,6 +39,76 @@ export function StructuredContentView({ paper }: Props) {
       .catch((reason) => setError((reason as Error).message))
       .finally(() => setLoading(false));
   }, [paper?.id, paper?.status, kind]);
+
+  if (compact) {
+    if (!paper || paper.status !== "ready") {
+      return (
+        <div className="workspace-panel-empty">
+          <strong>结构化切片</strong>
+          <p>请先从左侧论文库选择一篇已解析完成的论文。</p>
+        </div>
+      );
+    }
+
+    return (
+      <section className="workspace-structured-panel">
+        <header>
+          <div>
+            <span className="eyebrow">MinerU 结构化解析</span>
+            <h2>结构化切片</h2>
+          </div>
+          <b>{contents?.total ?? 0}</b>
+        </header>
+        <div className="workspace-content-filters">
+          {filters.map((filter) => (
+            <button
+              key={filter.kind}
+              className={kind === filter.kind ? "active" : ""}
+              onClick={() => setKind(filter.kind)}
+            >
+              {filter.label}<span>{contents?.counts[filter.kind] ?? "—"}</span>
+            </button>
+          ))}
+        </div>
+        {error && <div className="inline-error">{error}</div>}
+        <div className="workspace-chunk-list">
+          {loading && <p className="empty-copy">正在读取结构化内容…</p>}
+          {!loading && contents?.items.map((item) => {
+            const latex = typeof item.metadata.latex === "string"
+              ? item.metadata.latex
+              : "";
+            const label = filters.find((filter) => filter.kind === item.kind)?.label
+              ?? item.kind;
+            return (
+              <button
+                type="button"
+                className={`chunk-card ${selected?.chunk_id === item.chunk_id ? "selected" : ""}`}
+                key={item.chunk_id}
+                onClick={() => {
+                  setSelected(item);
+                  onLocate?.({ page: item.page, bbox: null });
+                }}
+              >
+                <header>
+                  <strong>第{item.page}页 · {label}</strong>
+                  <span>{selected?.chunk_id === item.chunk_id ? "当前切片" : "查看原文"}</span>
+                </header>
+                {item.resource_url && (
+                  <img src={item.resource_url} alt={`第${item.page}页${label}`} />
+                )}
+                {item.kind === "equation"
+                  ? <pre>{latex || item.content}</pre>
+                  : item.kind !== "table" && <p>{item.content}</p>}
+              </button>
+            );
+          })}
+          {!loading && contents && !contents.items.length && (
+            <p className="empty-copy">该论文没有识别到此类内容。</p>
+          )}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="content-page structured-page">

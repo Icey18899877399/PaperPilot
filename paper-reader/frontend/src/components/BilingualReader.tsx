@@ -13,6 +13,8 @@ interface Props {
   paper: Paper | null;
   compact?: boolean;
   activePage?: number;
+  sourceSelection?: string;
+  onPairSelect?: (sourceText: string) => void;
 }
 
 interface SelectionHighlight {
@@ -23,6 +25,30 @@ interface SelectionHighlight {
 }
 
 const PAGE_WIDTH = 620;
+
+function normalizedText(value: string) {
+  return value.toLocaleLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, "");
+}
+
+function correspondenceScore(source: string, selection: string) {
+  const normalizedSource = normalizedText(source);
+  const normalizedSelection = normalizedText(selection);
+  if (!normalizedSource || !normalizedSelection) return 0;
+  if (
+    normalizedSource.includes(normalizedSelection)
+    || normalizedSelection.includes(normalizedSource)
+  ) {
+    return 1 + Math.min(normalizedSource.length, normalizedSelection.length)
+      / Math.max(normalizedSource.length, normalizedSelection.length);
+  }
+
+  const selectedTerms = selection.toLocaleLowerCase().match(/[a-z0-9]{3,}|[\u4e00-\u9fff]/g) ?? [];
+  if (!selectedTerms.length) return 0;
+  const sourceTerms = new Set(
+    source.toLocaleLowerCase().match(/[a-z0-9]{3,}|[\u4e00-\u9fff]/g) ?? [],
+  );
+  return selectedTerms.filter((term) => sourceTerms.has(term)).length / selectedTerms.length;
+}
 
 function TranslatedBlock({ block, sourcePageWidth }: {
   block: BilingualBlock;
@@ -55,7 +81,13 @@ function TranslatedBlock({ block, sourcePageWidth }: {
   return <p className={block.kind === "list" ? "translated-list" : undefined}>{block.translated_text}</p>;
 }
 
-export function BilingualReader({ paper, compact = false, activePage }: Props) {
+export function BilingualReader({
+  paper,
+  compact = false,
+  activePage,
+  sourceSelection = "",
+  onPairSelect,
+}: Props) {
   const [page, setPage] = useState(1);
   const [pageCount, setPageCount] = useState(0);
   const [pageSize, setPageSize] = useState({ width: 0, height: 0 });
@@ -68,7 +100,9 @@ export function BilingualReader({ paper, compact = false, activePage }: Props) {
   const [selectedTranslation, setSelectedTranslation] = useState("");
   const [selectionLoading, setSelectionLoading] = useState(false);
   const [selectionError, setSelectionError] = useState("");
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const sourceSheetRef = useRef<HTMLElement>(null);
+  const compactPaperRef = useRef<HTMLDivElement>(null);
   const translationRequestId = useRef(0);
 
   const clearSelection = () => {
@@ -86,6 +120,7 @@ export function BilingualReader({ paper, compact = false, activePage }: Props) {
     setPageCount(0);
     setPageSize({ width: 0, height: 0 });
     setTranslation(null);
+    setActiveBlockId(null);
     setError("");
     clearSelection();
   }, [paper?.id]);
@@ -97,6 +132,7 @@ export function BilingualReader({ paper, compact = false, activePage }: Props) {
 
   useEffect(() => {
     clearSelection();
+    setActiveBlockId(null);
   }, [page]);
 
   useEffect(() => {
@@ -117,6 +153,42 @@ export function BilingualReader({ paper, compact = false, activePage }: Props) {
       });
     return () => { cancelled = true; };
   }, [paper?.id, paper?.status, page]);
+
+  useEffect(() => {
+    if (!compact || !translation || !sourceSelection.trim()) return;
+    const best = translation.blocks
+      .map((block) => ({ block, score: correspondenceScore(block.source_text, sourceSelection) }))
+      .sort((left, right) => right.score - left.score)[0];
+    if (!best || best.score < 0.25) return;
+    setActiveBlockId(best.block.chunk_id);
+    window.requestAnimationFrame(() => {
+      compactPaperRef.current
+        ?.querySelector<HTMLElement>(`[data-chunk-id="${best.block.chunk_id}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [compact, sourceSelection, translation]);
+
+  const selectTranslatedBlock = (block: BilingualBlock) => {
+    setActiveBlockId(block.chunk_id);
+    onPairSelect?.(block.source_text);
+  };
+
+  const selectCompactTranslation = (event: MouseEvent<HTMLDivElement>) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !selection.rangeCount || !translation) return;
+    const range = selection.getRangeAt(0);
+    const element = range.commonAncestorContainer instanceof Element
+      ? range.commonAncestorContainer
+      : range.commonAncestorContainer.parentElement;
+    const blockElement = element?.closest<HTMLElement>("[data-chunk-id]");
+    if (!blockElement || !compactPaperRef.current?.contains(blockElement)) return;
+    const block = translation.blocks.find(
+      (item) => item.chunk_id === blockElement.dataset.chunkId,
+    );
+    if (!block) return;
+    event.stopPropagation();
+    selectTranslatedBlock(block);
+  };
 
   const generate = async (refresh = false) => {
     if (!paper || loading) return;
@@ -233,13 +305,20 @@ export function BilingualReader({ paper, compact = false, activePage }: Props) {
             </div>
           )}
           {translation && (
-            <div className="translated-paper">
+            <div
+              className="translated-paper compact-translated-paper"
+              ref={compactPaperRef}
+              onMouseUp={selectCompactTranslation}
+            >
               {translation.blocks.map((block) => (
-                <TranslatedBlock
-                  block={block}
+                <div
+                  className={`translated-block ${activeBlockId === block.chunk_id ? "paired" : ""}`}
+                  data-chunk-id={block.chunk_id}
                   key={block.chunk_id}
-                  sourcePageWidth={1000}
-                />
+                  onClick={() => selectTranslatedBlock(block)}
+                >
+                  <TranslatedBlock block={block} sourcePageWidth={1000} />
+                </div>
               ))}
             </div>
           )}
