@@ -1,0 +1,9 @@
+[
+  {
+    "id": "demo-transformer",
+    "title": "Transformer基础讲解",
+    "description": "12秒本地学习视频样例，概览自注意力、编码器与解码器。",
+    "keywords": ["transformer", "attention", "注意力", "编码器", "解码器"],
+    "file_url": "/media/videos/transformer-demo.mp4"
+  }
+]
