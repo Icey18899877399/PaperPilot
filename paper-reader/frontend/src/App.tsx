@@ -105,15 +105,21 @@ export default function App() {
     }
   };
 
+  const loadVideos = async () => {
+    setViewLoading(true);
+    setError("");
+    try {
+      setVideos(await api.listVideos());
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (view === "logs") void loadLogs();
-    if (view === "videos") {
-      setViewLoading(true);
-      api.listVideos()
-        .then(setVideos)
-        .catch((reason) => setError((reason as Error).message))
-        .finally(() => setViewLoading(false));
-    }
+    if (view === "videos") void loadVideos();
   }, [view]);
 
   const upload = async (file: File) => {
@@ -287,7 +293,7 @@ export default function App() {
         <ChatPanel paperId={paper?.status === "ready" ? paper.id : undefined} onLocate={setTargetCitation} />
       </div>}
       {view === "logs" && <AgentLogView logs={logs} loading={viewLoading} onRefresh={loadLogs} />}
-      {view === "videos" && <VideoLibrary videos={videos} loading={viewLoading} />}
+      {view === "videos" && <VideoLibrary videos={videos} loading={viewLoading} onChanged={loadVideos} />}
       {view === "contents" && (
         <StructuredContentView paper={paper} />
       )}

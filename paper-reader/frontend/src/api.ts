@@ -6,7 +6,8 @@ import type {
   ModelStatus,
   Paper,
   PaperContentsResponse,
-  VideoResource
+  VideoResource,
+  VideoUpdatePayload
 } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -91,6 +92,24 @@ export const api = {
     }),
 
   listVideos: () => request<VideoResource[]>("/api/videos"),
+
+  createVideo: (body: FormData) =>
+    request<VideoResource>("/api/videos", { method: "POST", body }),
+
+  updateVideo: (videoId: string, payload: VideoUpdatePayload) =>
+    request<VideoResource>(`/api/videos/${videoId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }),
+
+  deleteVideo: async (videoId: string, deleteFile = false) => {
+    const response = await fetch(`/api/videos/${videoId}?delete_file=${deleteFile}`, { method: "DELETE" });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.detail ?? `删除失败：${response.status}`);
+    }
+  },
 
   agentLogs: (limit = 100) =>
     request<AgentLog[]>(`/api/agents/logs?limit=${limit}`)
