@@ -11,6 +11,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 interface Props {
   paper: Paper | null;
+  compact?: boolean;
+  activePage?: number;
 }
 
 interface SelectionHighlight {
@@ -53,7 +55,7 @@ function TranslatedBlock({ block, sourcePageWidth }: {
   return <p className={block.kind === "list" ? "translated-list" : undefined}>{block.translated_text}</p>;
 }
 
-export function BilingualReader({ paper }: Props) {
+export function BilingualReader({ paper, compact = false, activePage }: Props) {
   const [page, setPage] = useState(1);
   const [pageCount, setPageCount] = useState(0);
   const [pageSize, setPageSize] = useState({ width: 0, height: 0 });
@@ -87,6 +89,11 @@ export function BilingualReader({ paper }: Props) {
     setError("");
     clearSelection();
   }, [paper?.id]);
+
+  useEffect(() => {
+    if (!compact || !activePage) return;
+    setPage(Math.max(1, Math.min(activePage, paper?.page_count || activePage)));
+  }, [activePage, compact, paper?.page_count]);
 
   useEffect(() => {
     clearSelection();
@@ -174,6 +181,14 @@ export function BilingualReader({ paper }: Props) {
   };
 
   if (!paper || paper.status !== "ready") {
+    if (compact) {
+      return (
+        <div className="workspace-panel-empty">
+          <strong>中英对照</strong>
+          <p>请先从左侧论文库选择一篇已解析完成的论文。</p>
+        </div>
+      );
+    }
     return (
       <section className="content-page bilingual-page-view">
         <div className="bilingual-empty">
@@ -187,6 +202,51 @@ export function BilingualReader({ paper }: Props) {
   const translatedMinHeight = pageSize.width
     ? (PAGE_WIDTH * pageSize.height) / pageSize.width
     : 800;
+
+  if (compact) {
+    return (
+      <section className="workspace-bilingual-panel">
+        <header>
+          <div>
+            <span className="eyebrow">AI 学术翻译</span>
+            <h2>第 {page} 页中文译文</h2>
+            <p>译文页码与左侧 PDF 同步</p>
+          </div>
+          <button
+            disabled={loading || checkingCache}
+            onClick={() => void generate(Boolean(translation))}
+          >
+            {loading ? "翻译中…" : translation ? "重新翻译" : "生成译文"}
+          </button>
+        </header>
+        {error && <div className="inline-error">{error}</div>}
+        <div className="workspace-translation-sheet">
+          {checkingCache && <p className="sheet-status">正在读取本页译文…</p>}
+          {!checkingCache && !translation && (
+            <div className="translation-placeholder">
+              <div>译</div>
+              <strong>本页尚未生成中文译文</strong>
+              <p>点击生成后，译文会保留标题、正文、公式和插图的阅读顺序。</p>
+              <button disabled={loading} onClick={() => void generate()}>
+                {loading ? "正在翻译…" : "生成本页中文"}
+              </button>
+            </div>
+          )}
+          {translation && (
+            <div className="translated-paper">
+              {translation.blocks.map((block) => (
+                <TranslatedBlock
+                  block={block}
+                  key={block.chunk_id}
+                  sourcePageWidth={1000}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="content-page bilingual-page-view">

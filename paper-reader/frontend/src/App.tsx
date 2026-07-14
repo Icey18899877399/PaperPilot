@@ -7,13 +7,12 @@ import { ChatPanel } from "./components/ChatPanel";
 import { GuidePanel } from "./components/GuidePanel";
 import { MindMapView } from "./components/MindMapView";
 import { PaperReader } from "./components/PaperReader";
-import { TranslationPanel } from "./components/TranslationPanel";
-import { StructuredContentView } from "./components/StructuredContentView";
 import { UploadPanel } from "./components/UploadPanel";
 import { VideoLibrary } from "./components/VideoLibrary";
 import type { AgentLog, CitationTarget, Guide, ModelStatus, Paper, VideoResource } from "./types";
 
-type View = "workspace" | "chat" | "contents" | "bilingual" | "mindmap" | "logs" | "videos";
+type View = "workspace" | "mindmap" | "logs" | "videos";
+type AssistantTab = "guide" | "chat" | "bilingual";
 
 export default function App() {
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -25,6 +24,8 @@ export default function App() {
   const [error, setError] = useState("");
   const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
   const [view, setView] = useState<View>("workspace");
+  const [assistantTab, setAssistantTab] = useState<AssistantTab>("guide");
+  const [readerPage, setReaderPage] = useState(1);
   const [logs, setLogs] = useState<AgentLog[]>([]);
   const [videos, setVideos] = useState<VideoResource[]>([]);
   const [viewLoading, setViewLoading] = useState(false);
@@ -38,7 +39,7 @@ export default function App() {
   };
 
   const openView = (next: View) => {
-    if ((next === "chat" || next === "contents" || next === "bilingual" || next === "mindmap") && !paper) {
+    if (next === "mindmap" && !paper) {
       setPaper(papers.find((item) => item.status === "ready") ?? null);
     }
     setView(next);
@@ -130,6 +131,7 @@ export default function App() {
       const created = await api.uploadPaper(file);
       setPapers((items) => [created, ...items]);
       setPaper(created);
+      setReaderPage(1);
       setGuide(null);
       setTargetCitation(null);
       if (created.status === "parsing") void monitorPaper(created.id);
@@ -161,6 +163,7 @@ export default function App() {
       const updated = await api.retryPaper(item.id);
       updatePaper(updated);
       setPaper(updated);
+      setReaderPage(1);
       setGuide(null);
       setTargetCitation(null);
       void monitorPaper(updated.id);
@@ -204,9 +207,6 @@ export default function App() {
         </div>
         <nav>
           <button className={view === "workspace" ? "active" : ""} onClick={() => openView("workspace")}>阅读工作台</button>
-          <button className={view === "chat" ? "active" : ""} onClick={() => openView("chat")}>论文问答</button>
-          <button className={view === "contents" ? "active" : ""} onClick={() => openView("contents")}>结构化内容</button>
-          <button className={view === "bilingual" ? "active" : ""} onClick={() => openView("bilingual")}>中英对照</button>
           <button className={view === "mindmap" ? "active" : ""} onClick={() => openView("mindmap")}>思维导图</button>
           <button className={view === "logs" ? "active" : ""} onClick={() => setView("logs")}>Agent日志</button>
           <button className={view === "videos" ? "active" : ""} onClick={() => setView("videos")}>视频资源</button>
@@ -227,18 +227,14 @@ export default function App() {
       {error && <div className="error-banner">{error}</div>}
 
       {view === "workspace" && <div className="workspace">
-        <aside className="sidebar">
-          <UploadPanel uploading={uploading} onUpload={upload} />
-          <GuidePanel
-            guide={guide}
-            loading={guideLoading}
-            disabled={!paper || paper.status !== "ready"}
-            onGenerate={generateGuide}
-          />
+        <aside className="sidebar paper-library-sidebar">
           <div className="paper-list">
-            <div className="section-heading compact">
-              <h2>论文库</h2>
-              <span>{papers.length}</span>
+            <div className="paper-library-heading">
+              <div className="section-heading compact">
+                <h2>论文库</h2>
+                <span>{papers.length}</span>
+              </div>
+              <UploadPanel compact uploading={uploading} onUpload={upload} />
             </div>
             {papers.map((item) => (
               <div className="paper-row" key={item.id}>
@@ -246,6 +242,7 @@ export default function App() {
                   className={paper?.id === item.id ? "paper-item active" : "paper-item"}
                   onClick={() => {
                     setPaper(item);
+                    setReaderPage(1);
                     setGuide(null);
                     setTargetCitation(null);
                   }}
@@ -289,23 +286,54 @@ export default function App() {
               </div>
             ))}
           </div>
-          <TranslationPanel paperId={paper?.status === "ready" ? paper.id : undefined} />
         </aside>
 
-        <PaperReader paper={paper} targetCitation={targetCitation} />
-        <ChatPanel paperId={paper?.status === "ready" ? paper.id : undefined} onLocate={setTargetCitation} />
+        <PaperReader
+          paper={paper}
+          targetCitation={targetCitation}
+          onPageChange={setReaderPage}
+        />
+        <section className="workspace-assistant">
+          <nav className="assistant-tabs" aria-label="论文辅助功能">
+            <button
+              className={assistantTab === "guide" ? "active" : ""}
+              onClick={() => setAssistantTab("guide")}
+            >智能导读</button>
+            <button
+              className={assistantTab === "chat" ? "active" : ""}
+              onClick={() => setAssistantTab("chat")}
+            >论文对话</button>
+            <button
+              className={assistantTab === "bilingual" ? "active" : ""}
+              onClick={() => setAssistantTab("bilingual")}
+            >中英对照</button>
+          </nav>
+          <div className="assistant-panel-body">
+            {assistantTab === "guide" && (
+              <GuidePanel
+                guide={guide}
+                loading={guideLoading}
+                disabled={!paper || paper.status !== "ready"}
+                onGenerate={generateGuide}
+              />
+            )}
+            {assistantTab === "chat" && (
+              <ChatPanel
+                paperId={paper?.status === "ready" ? paper.id : undefined}
+                onLocate={(target) => {
+                  setTargetCitation(target);
+                  setReaderPage(target.page);
+                }}
+              />
+            )}
+            {assistantTab === "bilingual" && (
+              <BilingualReader paper={paper} compact activePage={readerPage} />
+            )}
+          </div>
+        </section>
       </div>}
-      {view === "chat" && (
-        <div className="standalone-chat-page">
-          <ChatPanel paperId={paper?.status === "ready" ? paper.id : undefined} onLocate={setTargetCitation} />
-        </div>
-      )}
       {view === "logs" && <AgentLogView logs={logs} loading={viewLoading} onRefresh={loadLogs} />}
       {view === "videos" && <VideoLibrary videos={videos} loading={viewLoading} onChanged={loadVideos} />}
-      {view === "contents" && (
-        <StructuredContentView paper={paper} />
-      )}
-      {view === "bilingual" && <BilingualReader paper={paper} />}
       <div hidden={view !== "mindmap"}>
         <MindMapView paper={paper} />
       </div>
