@@ -1,0 +1,47 @@
+import { useState } from "react";
+
+import type { VideoResource } from "../types";
+
+interface Props {
+  video: VideoResource;
+}
+
+export function VideoRecommendationCard({ video }: Props) {
+  const [playing, setPlaying] = useState(false);
+
+  return (
+    <article className="video-recommendation-card">
+      <img
+        className="video-cover"
+        src={video.cover_url || "/media/videos/default-video-cover.svg"}
+        alt={`${video.title}封面`}
+      />
+      <div className="video-recommendation-copy">
+        <span className="video-label">相关学习视频</span>
+        <strong>{video.title}</strong>
+        <p>{video.description}</p>
+        {video.recommendation_reason && (
+          <small className="video-reason">推荐理由：{video.recommendation_reason}</small>
+        )}
+        <div className="video-meta-row">
+          {video.knowledge_points.slice(0, 3).map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+        </div>
+        <button
+          className="primary-action compact-action"
+          type="button"
+          onClick={() => setPlaying((value) => !value)}
+        >
+          {playing ? "收起视频" : "播放视频"}
+        </button>
+      </div>
+      {playing && (
+        <video className="recommended-video-player" controls autoPlay preload="metadata">
+          <source src={video.file_url} type="video/mp4" />
+          当前浏览器不支持视频播放。
+        </video>
+      )}
+    </article>
+  );
+}

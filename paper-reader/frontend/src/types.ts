@@ -68,8 +68,24 @@ export interface VideoResource {
   id: string;
   title: string;
   description: string;
+  cover_url: string;
+  source: string;
   keywords: string[];
+  tags: string[];
+  knowledge_points: string[];
   file_url: string;
+  local_path: string;
+  file_sha256?: string | null;
+  recommendation_reason?: string | null;
+}
+
+export interface VideoUpdatePayload {
+  title?: string;
+  description?: string;
+  source?: string;
+  keywords?: string[];
+  tags?: string[];
+  knowledge_points?: string[];
 }
 
 export interface Guide {

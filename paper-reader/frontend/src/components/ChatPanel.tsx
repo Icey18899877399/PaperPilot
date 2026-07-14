@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 
 import { api } from "../api";
 import type { ChatResponse, CitationTarget } from "../types";
-import { VideoPlayer } from "./VideoPlayer";
+import { VideoRecommendationCard } from "./VideoRecommendationCard";
 
 interface Message {
   role: "user" | "assistant";
@@ -97,7 +97,7 @@ export function ChatPanel({ paperId, onLocate }: Props) {
                 </div>
               ))}
               {message.result?.videos.map((video) => (
-                <VideoPlayer key={video.id} video={video} />
+                <VideoRecommendationCard key={video.id} video={video} />
               ))}
             </div>
           </article>

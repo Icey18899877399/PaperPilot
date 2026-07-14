@@ -57,7 +57,7 @@ class ChatAgent(BaseAgent):
                 )
             else:
                 answer = "当前论文没有可检索的文本内容，请检查PDF解析结果。"
-        videos = self.videos.recommend(question)
+        videos = self.videos.recommend(question, context=context)
         self.log(
             trace_id,
             "answer",

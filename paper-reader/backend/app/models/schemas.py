@@ -132,8 +132,24 @@ class VideoResource(BaseModel):
     id: str
     title: str
     description: str = ""
+    cover_url: str = "/media/videos/default-video-cover.svg"
+    source: str = "本地维护"
     keywords: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    knowledge_points: list[str] = Field(default_factory=list)
     file_url: str
+    local_path: str = ""
+    file_sha256: str | None = None
+    recommendation_reason: str | None = None
+
+
+class VideoUpdateRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    source: str | None = None
+    keywords: list[str] | None = None
+    tags: list[str] | None = None
+    knowledge_points: list[str] | None = None
 
 
 class ChatResponse(BaseModel):
