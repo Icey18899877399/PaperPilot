@@ -69,7 +69,7 @@ export function MindMapView({ paper }: Props) {
         autoFit: true,
         duration: 260,
         fitRatio: 0.95,
-        initialExpandLevel: 3,
+        initialExpandLevel: 2,
         maxInitialScale: 1.3,
         maxWidth: 220,
         nodeMinHeight: 28,
@@ -80,7 +80,7 @@ export function MindMapView({ paper }: Props) {
       }, root);
     } else {
       void markmapRef.current
-        .setData(root, { autoFit: true, initialExpandLevel: 3 })
+        .setData(root, { autoFit: true, initialExpandLevel: 2 })
         .then(() => markmapRef.current?.fit());
     }
   }, [mindMap, transformer]);
