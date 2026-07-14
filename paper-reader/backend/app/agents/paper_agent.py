@@ -22,8 +22,8 @@ class PaperUnderstandingAgent(BaseAgent):
         self.llm = llm
 
     async def run(self, paper_id: str, filename: str, trace_id: str) -> GuideResponse:
-        chunks = self.kb.all_chunks(paper_id)
-        self.log(trace_id, "read-paper", f"读取{len(chunks)}个论文切片")
+        chunks = self.kb.retrieval_chunks(paper_id)
+        self.log(trace_id, "read-paper", f"读取{len(chunks)}个检索切片")
         context = "\n\n".join(chunk.content for chunk in chunks[:8])[:10000]
         generated = await self.llm.complete_json(
             (
