@@ -44,22 +44,35 @@ class TranslationAgent(BaseAgent):
             for chunk in chunks
             if chunk.content.strip() and chunk.kind not in {"equation", "code"}
         ]
-        payload = [
-            {"chunk_id": chunk.chunk_id, "text": chunk.content}
-            for chunk in translatable
-        ]
+        payload = []
+        for chunk in translatable:
+            item = {
+                "chunk_id": chunk.chunk_id,
+                "kind": chunk.kind,
+                "text": chunk.content,
+            }
+            table_html = str(chunk.metadata.get("table_html") or "").strip()
+            if chunk.kind == "table" and table_html:
+                item["table_html"] = table_html
+            payload.append(item)
+        output_budget = min(
+            12000,
+            max(6000, sum(len(chunk.content) for chunk in translatable) * 2),
+        )
         generated = await self.llm.complete_json(
             (
                 f"你是学术论文排版翻译Agent。把每个段落忠实翻译为{target_language}，"
                 "保留人名、术语、公式、引用编号和列表结构。对于表格块，必须翻译表头、"
-                "行名和每个文字单元格，并用换行与竖线保留行列关系，不得只翻译表题。"
+                "行名和每个文字单元格；如果提供table_html，必须按其中的tr/td顺序还原全部"
+                "单元格，并在译文中每行使用换行、单元格之间使用竖线保留行列关系。"
+                "不得只翻译表题，也不得省略看似重复或较长的单元格。"
                 "translated_text只能是纯文本，不要使用Markdown星号或标题标记。"
                 "只输出JSON对象，格式为"
                 '{"translations":[{"chunk_id":"原ID","translated_text":"译文"}]}。'
                 "不得遗漏或合并段落，也不要输出解释。"
             ),
             json.dumps(payload, ensure_ascii=False),
-            max_tokens=6000,
+            max_tokens=output_budget,
         )
         translations: dict[str, str] = {}
         if generated and isinstance(generated.get("translations"), list):

@@ -64,10 +64,10 @@ def _needs_table_text_fallback(chunk: PaperChunk) -> bool:
     if chunk.kind != "table":
         return False
     table_text = str(chunk.metadata.get("table_text") or "").strip()
-    return not table_text and (
-        not chunk.content.strip()
-        or chunk.content.strip() == "[表格] 该页包含一张表格"
-    )
+    # MinerU may return only an image/caption for a visually complex table.
+    # The PDF text layer is still useful in that case, so do not restrict the
+    # fallback to the exact placeholder string.
+    return not table_text
 
 
 def _enrich_table_chunks(
@@ -95,12 +95,21 @@ def _enrich_table_chunks(
 
 
 def _cached_bilingual_has_placeholder_table(result: BilingualPageResponse) -> bool:
-    return any(
-        block.kind == "table"
-        and not str(block.metadata.get("table_text") or "").strip()
-        and block.source_text.strip() == "[表格] 该页包含一张表格"
-        for block in result.blocks
-    )
+    for block in result.blocks:
+        if block.kind != "table":
+            continue
+        if str(block.metadata.get("table_text") or "").strip():
+            continue
+        source = block.source_text.strip()
+        body = source.removeprefix("[表格]").strip()
+        caption = str(block.metadata.get("caption") or "").strip()
+        if (
+            not body
+            or body in {"该页包含一张表格", "This page contains a table."}
+            or (caption and body == caption)
+        ):
+            return True
+    return False
 
 
 def _find_duplicate(file_sha256: str) -> PaperRecord | None:
@@ -419,7 +428,7 @@ async def create_bilingual_page(
         raise HTTPException(status_code=404, detail="论文页码不存在")
     if not refresh:
         cached = runtime.store.load_bilingual_page(paper_id, page, target_language)
-        if cached:
+        if cached and not _cached_bilingual_has_placeholder_table(cached):
             return cached
 
     chunks = [
