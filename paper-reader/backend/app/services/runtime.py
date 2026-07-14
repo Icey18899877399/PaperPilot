@@ -9,6 +9,7 @@ from app.agents.translation_agent import TranslationAgent
 from app.core.config import get_settings
 from app.models.schemas import AgentLog, PaperRecord
 from app.services.knowledge_base import KnowledgeBase
+from app.services.learning import LearningService
 from app.services.llm import LLMClient
 from app.services.parser import PaperParser
 from app.services.storage import PaperStore
@@ -27,6 +28,13 @@ class Runtime:
         self.store = PaperStore(settings.data_dir)
         self.llm = LLMClient(settings)
         self.videos = VideoCatalog(settings.videos_dir / "catalog.json")
+        self.learning = LearningService(
+            settings,
+            self.kb,
+            self.llm,
+            self.videos,
+            self.logs,
+        )
         for paper in self.store.load_papers():
             self.papers[paper.id] = paper
             chunks = self.store.load_chunks(paper.id)

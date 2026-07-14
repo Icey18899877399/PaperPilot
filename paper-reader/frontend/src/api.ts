@@ -4,6 +4,8 @@ import type {
   ChunkExplanation,
   ChatResponse,
   Guide,
+  LearningResourceType,
+  LearningSearchResponse,
   MindMap,
   ModelStatus,
   Paper,
@@ -134,6 +136,20 @@ export const api = {
       throw new Error(payload?.detail ?? `删除失败：${response.status}`);
     }
   },
+
+  searchLearning: (
+    query: string,
+    paperId: string | null,
+    resourceTypes: LearningResourceType[]
+  ) => request<LearningSearchResponse>("/api/learning/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query,
+      paper_id: paperId || null,
+      resource_types: resourceTypes
+    })
+  }),
 
   agentLogs: (limit = 100) =>
     request<AgentLog[]>(`/api/agents/logs?limit=${limit}`)

@@ -160,6 +160,53 @@ class VideoUpdateRequest(BaseModel):
     knowledge_points: list[str] | None = None
 
 
+class LearningResourceType(StrEnum):
+    paper = "paper"
+    video = "video"
+    article = "article"
+    course = "course"
+    documentation = "documentation"
+    local = "local"
+
+
+class LearningSearchRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=500)
+    paper_id: str | None = None
+    resource_types: list[LearningResourceType] = Field(default_factory=list)
+
+
+class LearningResource(BaseModel):
+    id: str
+    resource_type: LearningResourceType
+    title: str
+    description: str = ""
+    source: str
+    url: str
+    authors: list[str] = Field(default_factory=list)
+    published_year: int | None = None
+    thumbnail_url: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    relevance_reason: str = ""
+    local: bool = False
+
+
+class LearningProviderStatus(BaseModel):
+    provider: str
+    enabled: bool = True
+    success: bool = True
+    message: str = ""
+
+
+class LearningSearchResponse(BaseModel):
+    query: str
+    interpreted_query: str
+    summary: str
+    learning_path: list[str] = Field(default_factory=list)
+    resources: list[LearningResource] = Field(default_factory=list)
+    providers: list[LearningProviderStatus] = Field(default_factory=list)
+    agent_trace_id: str
+
+
 class ChatResponse(BaseModel):
     answer: str
     citations: list[Citation] = Field(default_factory=list)

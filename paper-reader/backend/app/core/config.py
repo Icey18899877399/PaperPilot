@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     mineru_language: str = "ch"
     mineru_timeout_seconds: int = 3600
 
+    openalex_api_key: str = ""
+    crossref_mailto: str = ""
+    youtube_api_key: str = ""
+    learning_search_timeout_seconds: int = 20
+
     backend_dir: Path = Path(__file__).resolve().parents[2]
 
     model_config = SettingsConfigDict(

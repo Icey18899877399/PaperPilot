@@ -5,15 +5,15 @@ import { api } from "./api";
 import { AgentLogView } from "./components/AgentLogView";
 import { BilingualReader } from "./components/BilingualReader";
 import { ChatPanel } from "./components/ChatPanel";
+import { ExtendedLearning } from "./components/ExtendedLearning";
 import { GuidePanel } from "./components/GuidePanel";
 import { MindMapView } from "./components/MindMapView";
 import { PaperReader } from "./components/PaperReader";
 import { StructuredContentView } from "./components/StructuredContentView";
 import { UploadPanel } from "./components/UploadPanel";
-import { VideoLibrary } from "./components/VideoLibrary";
 import type { AgentLog, CitationTarget, Guide, ModelStatus, Paper, VideoResource } from "./types";
 
-type View = "workspace" | "mindmap" | "logs" | "videos";
+type View = "workspace" | "mindmap" | "logs" | "learning";
 type AssistantTab = "guide" | "chat" | "bilingual" | "contents";
 
 interface ResizeSession {
@@ -194,7 +194,7 @@ export default function App() {
 
   useEffect(() => {
     if (view === "logs") void loadLogs();
-    if (view === "videos") void loadVideos();
+    if (view === "learning") void loadVideos();
   }, [view]);
 
   const upload = async (file: File) => {
@@ -286,7 +286,7 @@ export default function App() {
           <button className={view === "workspace" ? "active" : ""} onClick={() => openView("workspace")}>阅读工作台</button>
           <button className={view === "mindmap" ? "active" : ""} onClick={() => openView("mindmap")}>思维导图</button>
           <button className={view === "logs" ? "active" : ""} onClick={() => setView("logs")}>Agent日志</button>
-          <button className={view === "videos" ? "active" : ""} onClick={() => setView("videos")}>视频资源</button>
+          <button className={view === "learning" ? "active" : ""} onClick={() => setView("learning")}>拓展学习</button>
           <span
             className={
               modelStatus?.configured
@@ -449,7 +449,15 @@ export default function App() {
         </section>
       </div>}
       {view === "logs" && <AgentLogView logs={logs} loading={viewLoading} onRefresh={loadLogs} />}
-      {view === "videos" && <VideoLibrary videos={videos} loading={viewLoading} onChanged={loadVideos} />}
+      {view === "learning" && (
+        <ExtendedLearning
+          papers={papers}
+          activePaper={paper}
+          videos={videos}
+          loading={viewLoading}
+          onVideosChanged={loadVideos}
+        />
+      )}
       <div hidden={view !== "mindmap"}>
         <MindMapView paper={paper} />
       </div>

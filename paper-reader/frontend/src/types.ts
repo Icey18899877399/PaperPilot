@@ -96,6 +96,46 @@ export interface VideoUpdatePayload {
   knowledge_points?: string[];
 }
 
+export type LearningResourceType =
+  | "paper"
+  | "video"
+  | "article"
+  | "course"
+  | "documentation"
+  | "local";
+
+export interface LearningResource {
+  id: string;
+  resource_type: LearningResourceType;
+  title: string;
+  description: string;
+  source: string;
+  url: string;
+  authors: string[];
+  published_year?: number | null;
+  thumbnail_url?: string | null;
+  tags: string[];
+  relevance_reason: string;
+  local: boolean;
+}
+
+export interface LearningProviderStatus {
+  provider: string;
+  enabled: boolean;
+  success: boolean;
+  message: string;
+}
+
+export interface LearningSearchResponse {
+  query: string;
+  interpreted_query: string;
+  summary: string;
+  learning_path: string[];
+  resources: LearningResource[];
+  providers: LearningProviderStatus[];
+  agent_trace_id: string;
+}
+
 export interface Guide {
   paper_id: string;
   title: string;

@@ -7,6 +7,7 @@ interface Props {
   videos: VideoResource[];
   loading: boolean;
   onChanged: () => Promise<void>;
+  embedded?: boolean;
 }
 
 interface FormState {
@@ -32,7 +33,7 @@ const emptyForm: FormState = {
 const join = (items: string[]) => items.join("，");
 const split = (value: string) => value.split(/[,，;；\n]+/).map((item) => item.trim()).filter(Boolean);
 
-export function VideoLibrary({ videos, loading, onChanged }: Props) {
+export function VideoLibrary({ videos, loading, onChanged, embedded = false }: Props) {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -138,15 +139,15 @@ export function VideoLibrary({ videos, loading, onChanged }: Props) {
   };
 
   return (
-    <section className="content-page video-management-page">
-      <header className="content-page-header">
+    <section className={embedded ? "video-management-page embedded" : "content-page video-management-page"}>
+      {!embedded && <header className="content-page-header">
         <div>
           <span className="eyebrow">US-08 · 本地视频资源管理</span>
           <h1>学习视频库</h1>
           <p>维护MP4、封面、来源、关键词、标签与关联知识点；聊天Agent仅依据这些元数据推荐视频。</p>
         </div>
         <span className="ready-badge">{videos.length} 个资源</span>
-      </header>
+      </header>}
 
       <form className="video-admin-form" onSubmit={submit}>
         <div className="video-form-heading">
