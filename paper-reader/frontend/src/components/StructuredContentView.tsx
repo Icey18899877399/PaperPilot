@@ -40,11 +40,11 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
     api.paperContents(paper.id, kind)
       .then((result) => {
         setContents(result);
-        setSelected(result.items[0] ?? null);
+        setSelected(compact ? null : result.items[0] ?? null);
       })
       .catch((reason) => setError((reason as Error).message))
       .finally(() => setLoading(false));
-  }, [paper?.id, paper?.status, kind]);
+  }, [paper?.id, paper?.status, kind, compact]);
 
   const selectAndExplain = async (item: PaperChunk) => {
     setSelected(item);
@@ -144,7 +144,13 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
                         {explanationErrors[item.chunk_id]}，再次点击可重试。
                       </p>
                     )}
-                    {explanations[item.chunk_id] && <p>{explanations[item.chunk_id]}</p>}
+                    {explanations[item.chunk_id] && (
+                      <p>
+                        {explanations[item.chunk_id]
+                          .replace(/\*\*/g, "")
+                          .replace(/^#{1,6}\s+/gm, "")}
+                      </p>
+                    )}
                   </div>
                 )}
               </article>

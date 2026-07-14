@@ -55,6 +55,9 @@ function TranslatedBlock({ block, sourcePageWidth }: {
   sourcePageWidth: number;
 }) {
   const textLevel = Number(block.metadata.text_level);
+  const translatedText = block.translated_text
+    .replace(/\*\*/g, "")
+    .replace(/^#{1,6}\s+/gm, "");
   const imageWidth = block.bbox?.length === 4 && sourcePageWidth
     ? Math.min(100, Math.max(35, ((block.bbox[2] - block.bbox[0]) / sourcePageWidth) * 100))
     : 76;
@@ -62,11 +65,11 @@ function TranslatedBlock({ block, sourcePageWidth }: {
   if ((block.kind === "image" || block.kind === "chart" || block.kind === "table") && block.resource_url) {
     return (
       <figure className={`translated-visual translated-${block.kind}`} style={{ width: `${imageWidth}%` }}>
-        <img src={block.resource_url} alt={block.translated_text.slice(0, 80)} />
-        {block.translated_text && (
+        <img src={block.resource_url} alt={translatedText.slice(0, 80)} />
+        {translatedText && (
           block.kind === "table"
-            ? <pre className="translated-table-text">{block.translated_text}</pre>
-            : <figcaption>{block.translated_text}</figcaption>
+            ? <pre className="translated-table-text">{translatedText}</pre>
+            : <figcaption>{translatedText}</figcaption>
         )}
       </figure>
     );
@@ -76,7 +79,7 @@ function TranslatedBlock({ block, sourcePageWidth }: {
     return (
       <section className="translated-table-block">
         <strong>表格内容译文</strong>
-        <pre className="translated-table-text">{block.translated_text}</pre>
+        <pre className="translated-table-text">{translatedText}</pre>
       </section>
     );
   }
@@ -87,11 +90,11 @@ function TranslatedBlock({ block, sourcePageWidth }: {
 
   if (Number.isFinite(textLevel)) {
     return textLevel <= 1
-      ? <h2>{block.translated_text}</h2>
-      : <h3>{block.translated_text}</h3>;
+      ? <h2>{translatedText}</h2>
+      : <h3>{translatedText}</h3>;
   }
 
-  return <p className={block.kind === "list" ? "translated-list" : undefined}>{block.translated_text}</p>;
+  return <p className={block.kind === "list" ? "translated-list" : undefined}>{translatedText}</p>;
 }
 
 export function BilingualReader({

@@ -18,7 +18,10 @@ class TranslationAgent(BaseAgent):
         self, text: str, target_language: str, trace_id: str
     ) -> TranslationResponse:
         translated = await self.llm.complete(
-            f"你是学术翻译Agent。忠实翻译为{target_language}，保留术语、公式和引用编号。",
+            (
+                f"你是学术翻译Agent。忠实翻译为{target_language}，保留术语、公式和引用编号。"
+                "只输出译文纯文本，不要添加解释、Markdown星号或标题标记。"
+            ),
             text,
         )
         if not translated:
@@ -50,6 +53,7 @@ class TranslationAgent(BaseAgent):
                 f"你是学术论文排版翻译Agent。把每个段落忠实翻译为{target_language}，"
                 "保留人名、术语、公式、引用编号和列表结构。对于表格块，必须翻译表头、"
                 "行名和每个文字单元格，并用换行与竖线保留行列关系，不得只翻译表题。"
+                "translated_text只能是纯文本，不要使用Markdown星号或标题标记。"
                 "只输出JSON对象，格式为"
                 '{"translations":[{"chunk_id":"原ID","translated_text":"译文"}]}。'
                 "不得遗漏或合并段落，也不要输出解释。"

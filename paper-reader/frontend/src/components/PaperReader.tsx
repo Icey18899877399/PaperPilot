@@ -379,7 +379,7 @@ export function PaperReader({
                 <span>中文译文</span>
                 {translationLoading && <p className="selection-loading">正在翻译…</p>}
                 {translationError && <p className="selection-error">{translationError}</p>}
-                {selectedTranslation && <p>{selectedTranslation}</p>}
+                {selectedTranslation && <p>{selectedTranslation.replace(/\*\*/g, "")}</p>}
               </section>
               <small>选区会持续高亮；拖动右下角可缩放此窗口。</small>
             </aside>
