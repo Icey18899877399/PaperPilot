@@ -149,6 +149,39 @@ async def test_learning_service_combines_and_deduplicates_grounded_resources(tmp
     assert result.learning_path
 
 
+@pytest.mark.asyncio
+async def test_learning_service_keeps_text_search_available_when_wikipedia_fails(tmp_path) -> None:
+    settings = Settings(backend_dir=tmp_path)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host in {"zh.wikipedia.org", "en.wikipedia.org"}:
+            return httpx.Response(503, text="temporarily unavailable")
+        raise AssertionError(f"unexpected provider request: {request.url}")
+
+    service = LearningService(
+        settings,
+        KnowledgeBase(),
+        DisabledLLM(),  # type: ignore[arg-type]
+        VideoCatalog(tmp_path / "videos" / "catalog.json"),
+        [],
+        transport=httpx.MockTransport(handler),
+    )
+    result = await service.search(
+        LearningSearchRequest(
+            query="注意力机制基础",
+            resource_types=[LearningResourceType.article],
+        ),
+        None,
+    )
+
+    assert len(result.resources) == 1
+    assert result.resources[0].resource_type == LearningResourceType.article
+    assert "wikipedia.org/w/index.php" in result.resources[0].url
+    wikipedia = next(status for status in result.providers if status.provider == "Wikipedia")
+    assert wikipedia.success is False
+    assert "搜索入口" in wikipedia.message
+
+
 def test_learning_api_accepts_paper_aware_query() -> None:
     paper = PaperRecord(
         id="paper-ready",

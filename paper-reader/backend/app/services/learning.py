@@ -87,7 +87,7 @@ class LearningService:
             summary = self._fallback_summary(resources, paper)
         learning_path = self._strings(narrative.get("learning_path"))[:6]
         if not learning_path:
-            learning_path = concepts[:6] or ["先掌握论文核心概念", "再阅读相关工作", "最后结合视频或课程复习"]
+            learning_path = concepts[:4] or ["概念背景", "方法对照", "实践或复现"]
 
         self.logs.append(
             AgentLog(
@@ -165,9 +165,13 @@ class LearningService:
         ]
         try:
             result = await self.llm.complete_json(
-                "你是拓展学习Agent。只能依据给定候选资源和论文上下文提出学习建议，不得补充不存在的资源或URL。",
                 (
-                    "输出JSON：summary（2-3句中文学习建议），learning_path（3-6个递进步骤数组）。\n"
+                    "你是图书馆检索员。只能依据给定候选资源和论文上下文整理摘要，"
+                    "不得补充不存在的资源或URL。语言直接、克制，避免宣传语、套话和反复使用“建议”。"
+                ),
+                (
+                    "输出JSON：summary（80-140字中文检索摘要，说明结果覆盖什么和缺什么），"
+                    "learning_path（2-4个阅读顺序数组，每项不超过20字，使用名词短语）。\n"
                     f"原问题：{query}\n检索词：{interpreted_query}\n概念：{concepts}\n"
                     f"论文上下文：{context[:1800]}\n候选资源：{candidates}"
                 ),
@@ -309,11 +313,18 @@ class LearningService:
                 self._wikipedia_item(item, language)
                 for item in (payload.get("query") or {}).get("search", [])
             ]
-            return [item for item in items if item], LearningProviderStatus(
-                provider="Wikipedia"
+            valid_items = [item for item in items if item]
+            if valid_items:
+                return valid_items, LearningProviderStatus(provider="Wikipedia")
+            return [self._wikipedia_search_resource(query, language)], LearningProviderStatus(
+                provider="Wikipedia",
+                message="未返回直接条目，已提供站内搜索入口",
             )
         except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
-            return [], self._failed_status("Wikipedia", exc)
+            fallback = self._wikipedia_search_resource(query, language)
+            status = self._failed_status("Wikipedia", exc)
+            status.message = "接口暂不可用，已提供站内搜索入口"
+            return [fallback], status
 
     async def _get_json(self, url: str, params: dict[str, Any]) -> dict[str, Any]:
         headers = {"User-Agent": "PaperPilot/0.1 (expansion-learning)"}
@@ -348,7 +359,7 @@ class LearningService:
             authors=authors,
             published_year=item.get("publication_year"),
             tags=[str(item.get("type") or "paper")],
-            relevance_reason="OpenAlex学术检索结果，与当前论文主题相关",
+            relevance_reason="标题、摘要或主题词与检索内容匹配",
         )
 
     def _crossref_item(self, item: dict[str, Any]) -> LearningResource | None:
@@ -373,7 +384,7 @@ class LearningService:
             authors=[author for author in authors if author],
             published_year=year,
             tags=[str(value) for value in item.get("subject", [])[:5]],
-            relevance_reason="Crossref出版元数据结果，可用于核对DOI和正式来源",
+            relevance_reason="出版信息与检索内容匹配，可用于核对DOI",
         )
 
     def _youtube_item(self, item: dict[str, Any]) -> LearningResource | None:
@@ -392,7 +403,7 @@ class LearningService:
             source=str(snippet.get("channelTitle") or "YouTube"),
             url=f"https://www.youtube.com/watch?v={video_id}",
             thumbnail_url=thumbnail,
-            relevance_reason="YouTube视频检索结果，与当前拓展学习主题相关",
+            relevance_reason="视频标题或简介与当前检索词匹配",
         )
 
     def _wikipedia_item(
@@ -411,7 +422,25 @@ class LearningService:
             description=self._strip_html(str(item.get("snippet") or "")),
             source=f"Wikipedia ({language})",
             url=f"https://{language}.wikipedia.org/?curid={page_id}",
-            relevance_reason="百科条目适合补充概念定义和基础背景，建议与论文来源交叉核对",
+            relevance_reason="用于补充术语定义与基础背景，需与论文交叉核对",
+        )
+
+    def _wikipedia_search_resource(
+        self,
+        query: str,
+        language: str,
+    ) -> LearningResource:
+        return LearningResource(
+            id=f"wikipedia-search:{language}:{self._digest(query)}",
+            resource_type=LearningResourceType.article,
+            title=f"在 Wikipedia 中查找：{query}",
+            description="文字资料接口暂未返回条目，可通过站内搜索继续查找概念定义和背景说明。",
+            source=f"Wikipedia ({language})",
+            url=(
+                f"https://{language}.wikipedia.org/w/index.php?"
+                f"search={quote_plus(query)}"
+            ),
+            relevance_reason="站内搜索词来自当前论文和问题",
         )
 
     def _apply_relevance(
