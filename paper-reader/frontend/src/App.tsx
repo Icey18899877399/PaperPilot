@@ -116,6 +116,7 @@ export default function App() {
       setPaper(papers.find((item) => item.status === "ready") ?? null);
     }
     setView(next);
+    window.scrollTo({ top: 0, behavior: "auto" });
   };
 
   async function monitorPaper(paperId: string) {
@@ -285,8 +286,8 @@ export default function App() {
         <nav>
           <button className={view === "workspace" ? "active" : ""} onClick={() => openView("workspace")}>阅读工作台</button>
           <button className={view === "mindmap" ? "active" : ""} onClick={() => openView("mindmap")}>思维导图</button>
-          <button className={view === "logs" ? "active" : ""} onClick={() => setView("logs")}>Agent日志</button>
-          <button className={view === "learning" ? "active" : ""} onClick={() => setView("learning")}>拓展学习</button>
+          <button className={view === "logs" ? "active" : ""} onClick={() => openView("logs")}>Agent日志</button>
+          <button className={view === "learning" ? "active" : ""} onClick={() => openView("learning")}>拓展学习</button>
           <span
             className={
               modelStatus?.configured
