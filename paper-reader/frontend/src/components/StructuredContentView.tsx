@@ -67,15 +67,12 @@ export function StructuredContentView({ paper }: Props) {
           <div className="chunk-compare-shell">
             <aside className="chunk-pane">
               <div className="chunk-pane-heading">
-                <div><strong>解析切片</strong><span>点击任一切片，右侧原文同步定位并高亮</span></div>
+                <div><strong>解析切片</strong><span>点击任一切片，右侧原文同步翻页</span></div>
                 <b>{contents?.total ?? 0}</b>
               </div>
               <div className="chunk-list">
                 {loading && <p className="empty-copy">正在读取结构化内容…</p>}
                 {!loading && contents?.items.map((item) => {
-                  const tableText = typeof item.metadata.table_text === "string"
-                    ? item.metadata.table_text
-                    : "";
                   const latex = typeof item.metadata.latex === "string"
                     ? item.metadata.latex
                     : "";
@@ -94,7 +91,7 @@ export function StructuredContentView({ paper }: Props) {
                       {item.resource_url && <img src={item.resource_url} alt={`第${item.page}页${label}`} />}
                       {item.kind === "equation"
                         ? <pre>{latex || item.content}</pre>
-                        : <p>{tableText || item.content}</p>}
+                        : item.kind !== "table" && <p>{item.content}</p>}
                     </button>
                   );
                 })}
@@ -106,7 +103,7 @@ export function StructuredContentView({ paper }: Props) {
             <section className="source-pane">
               <PaperReader
                 paper={paper}
-                targetCitation={selected ? { page: selected.page, bbox: selected.bbox } : null}
+                targetCitation={selected ? { page: selected.page, bbox: null } : null}
                 pageWidth={660}
               />
             </section>
