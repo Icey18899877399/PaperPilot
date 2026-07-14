@@ -165,7 +165,7 @@ export function PaperReader({ paper, targetCitation, pageWidth = 720 }: Props) {
                 pageNumber={page}
                 width={pageWidth}
                 renderTextLayer
-                renderAnnotationLayer={false}
+                renderAnnotationLayer
                 onLoadSuccess={(loadedPage) => {
                   const viewport = loadedPage.getViewport({ scale: 1 });
                   setPageSize({ width: viewport.width, height: viewport.height });
