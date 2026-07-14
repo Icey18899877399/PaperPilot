@@ -45,12 +45,95 @@ export interface PaperContentsResponse {
   items: PaperChunk[];
 }
 
+export interface ChunkExplanation {
+  paper_id: string;
+  chunk_id: string;
+  page: number;
+  explanation: string;
+  agent_trace_id: string;
+}
+
+export interface BilingualBlock {
+  chunk_id: string;
+  page: number;
+  kind: string;
+  source_text: string;
+  translated_text: string;
+  resource_url?: string | null;
+  bbox?: number[] | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface BilingualPage {
+  paper_id: string;
+  page: number;
+  target_language: string;
+  blocks: BilingualBlock[];
+  agent_trace_id: string;
+}
+
 export interface VideoResource {
   id: string;
   title: string;
   description: string;
+  cover_url: string;
+  source: string;
   keywords: string[];
+  tags: string[];
+  knowledge_points: string[];
   file_url: string;
+  local_path: string;
+  file_sha256?: string | null;
+  recommendation_reason?: string | null;
+}
+
+export interface VideoUpdatePayload {
+  title?: string;
+  description?: string;
+  source?: string;
+  keywords?: string[];
+  tags?: string[];
+  knowledge_points?: string[];
+}
+
+export type LearningResourceType =
+  | "paper"
+  | "video"
+  | "article"
+  | "course"
+  | "documentation"
+  | "local";
+
+export interface LearningResource {
+  id: string;
+  resource_type: LearningResourceType;
+  title: string;
+  description: string;
+  source: string;
+  url: string;
+  authors: string[];
+  published_year?: number | null;
+  thumbnail_url?: string | null;
+  tags: string[];
+  relevance_reason: string;
+  local: boolean;
+}
+
+export interface LearningProviderStatus {
+  provider: string;
+  enabled: boolean;
+  success: boolean;
+  message: string;
+}
+
+export interface LearningSearchResponse {
+  query: string;
+  interpreted_query: string;
+  summary: string;
+  learning_path: string[];
+  resources: LearningResource[];
+  providers: LearningProviderStatus[];
+  agent_trace_id: string;
 }
 
 export interface Guide {

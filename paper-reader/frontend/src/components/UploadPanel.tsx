@@ -6,9 +6,10 @@ const MAX_PDF_SIZE_BYTES = MAX_PDF_SIZE_MB * 1024 * 1024;
 interface Props {
   uploading: boolean;
   onUpload: (file: File) => Promise<void>;
+  compact?: boolean;
 }
 
-export function UploadPanel({ uploading, onUpload }: Props) {
+export function UploadPanel({ uploading, onUpload, compact = false }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [validationError, setValidationError] = useState("");
@@ -27,6 +28,31 @@ export function UploadPanel({ uploading, onUpload }: Props) {
     await onUpload(file);
   };
 
+  const fileInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept="application/pdf"
+      hidden
+      onChange={(event) => {
+        void accept(event.target.files?.[0]);
+        event.currentTarget.value = "";
+      }}
+    />
+  );
+
+  if (compact) {
+    return (
+      <div className="compact-upload">
+        {fileInput}
+        <button disabled={uploading} onClick={() => inputRef.current?.click()}>
+          {uploading ? "正在解析…" : "+ 上传论文"}
+        </button>
+        {validationError && <small className="upload-error">{validationError}</small>}
+      </div>
+    );
+  }
+
   return (
     <section
       className={`upload-box ${dragging ? "is-dragging" : ""}`}
@@ -41,16 +67,7 @@ export function UploadPanel({ uploading, onUpload }: Props) {
         void accept(event.dataTransfer.files[0]);
       }}
     >
-      <input
-        ref={inputRef}
-        type="file"
-        accept="application/pdf"
-        hidden
-        onChange={(event) => {
-          void accept(event.target.files?.[0]);
-          event.currentTarget.value = "";
-        }}
-      />
+      {fileInput}
       <span className="upload-icon">＋</span>
       <strong>{uploading ? "正在解析论文…" : "上传论文 PDF"}</strong>
       <span>点击选择或拖拽文件，最大{MAX_PDF_SIZE_MB}MB</span>

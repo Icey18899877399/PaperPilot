@@ -1,12 +1,17 @@
 import type {
   AgentLog,
+  BilingualPage,
+  ChunkExplanation,
   ChatResponse,
   Guide,
+  LearningResourceType,
+  LearningSearchResponse,
   MindMap,
   ModelStatus,
   Paper,
   PaperContentsResponse,
-  VideoResource
+  VideoResource,
+  VideoUpdatePayload
 } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -76,6 +81,12 @@ export const api = {
       `/api/papers/${paperId}/contents?kind=${encodeURIComponent(kind)}`
     ),
 
+  explainChunk: (paperId: string, chunkId: string) =>
+    request<ChunkExplanation>(
+      `/api/papers/${paperId}/chunks/${encodeURIComponent(chunkId)}/explanation`,
+      { method: "POST" }
+    ),
+
   chat: (paperId: string, question: string) =>
     request<ChatResponse>("/api/chat", {
       method: "POST",
@@ -90,7 +101,55 @@ export const api = {
       body: JSON.stringify({ text, target_language: "中文" })
     }),
 
+  cachedBilingual: async (paperId: string, page: number) => {
+    const response = await fetch(`/api/papers/${paperId}/bilingual/${page}`);
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.detail ?? `请求失败：${response.status}`);
+    }
+    return response.json() as Promise<BilingualPage>;
+  },
+
+  createBilingual: (paperId: string, page: number, refresh = false) =>
+    request<BilingualPage>(
+      `/api/papers/${paperId}/bilingual/${page}?refresh=${refresh}`,
+      { method: "POST" }
+    ),
+
   listVideos: () => request<VideoResource[]>("/api/videos"),
+
+  createVideo: (body: FormData) =>
+    request<VideoResource>("/api/videos", { method: "POST", body }),
+
+  updateVideo: (videoId: string, payload: VideoUpdatePayload) =>
+    request<VideoResource>(`/api/videos/${videoId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }),
+
+  deleteVideo: async (videoId: string, deleteFile = false) => {
+    const response = await fetch(`/api/videos/${videoId}?delete_file=${deleteFile}`, { method: "DELETE" });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.detail ?? `删除失败：${response.status}`);
+    }
+  },
+
+  searchLearning: (
+    query: string,
+    paperId: string | null,
+    resourceTypes: LearningResourceType[]
+  ) => request<LearningSearchResponse>("/api/learning/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query,
+      paper_id: paperId || null,
+      resource_types: resourceTypes
+    })
+  }),
 
   agentLogs: (limit = 100) =>
     request<AgentLog[]>(`/api/agents/logs?limit=${limit}`)
