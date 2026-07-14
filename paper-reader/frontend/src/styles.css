@@ -1047,31 +1047,21 @@ button:disabled {
 }
 
 .mindmap-visual-shell {
-  height: calc(100vh - 205px);
-  min-height: 630px;
+  height: calc(100vh - 190px);
+  min-height: 680px;
   margin-top: 20px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #fbfaf8;
-  border: 1px solid #dedfe5;
+  background: #f7f9fd;
+  border: 1px solid #dbe2ee;
   border-radius: 18px;
   box-shadow: 0 12px 34px rgb(32 45 68 / 8%);
 }
 
-.mindmap-visual-shell.is-expanded {
-  position: fixed;
-  z-index: 1000;
-  inset: 12px;
-  height: auto;
-  margin: 0;
-  border-radius: 16px;
-  box-shadow: 0 20px 80px rgb(15 23 42 / 30%);
-}
-
 .mindmap-toolbar {
-  min-height: 64px;
-  padding: 11px 16px;
+  min-height: 58px;
+  padding: 9px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1089,7 +1079,8 @@ button:disabled {
 
 .mindmap-toolbar strong {
   overflow: hidden;
-  color: #263148;
+  color: #1f2f4a;
+  font-size: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1105,12 +1096,15 @@ button:disabled {
 }
 
 .mindmap-actions button {
-  padding: 7px 10px;
-  color: #40506c;
-  background: #f6f7fa;
-  border: 1px solid #dce1e9;
-  border-radius: 8px;
-  font-size: 11px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: #3159b6;
+  background: #eef3ff;
+  border: 1px solid #c7d5f5;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .mindmap-actions button:hover {
@@ -1124,8 +1118,8 @@ button:disabled {
   flex: 1;
   overflow: hidden;
   background:
-    radial-gradient(circle at 1px 1px, rgb(116 126 144 / 13%) 1px, transparent 0) 0 0 / 20px 20px,
-    #fbfaf8;
+    radial-gradient(circle at 1px 1px, rgb(78 103 150 / 12%) 1px, transparent 0) 0 0 / 22px 22px,
+    linear-gradient(135deg, #fbfcff, #f5f8fe);
 }
 
 .mindmap-svg-wrap svg {
@@ -1135,58 +1129,50 @@ button:disabled {
 }
 
 .mindmap-svg-wrap .markmap-node text {
-  fill: #293243;
+  fill: #24334d;
   font-family: Inter, "Microsoft YaHei", sans-serif;
 }
 
 .mindmap-svg-wrap .markmap-foreign div {
-  padding: 5px 9px;
-  color: #252c39;
-  background: rgb(255 255 255 / 92%);
-  border: 1px solid #69707c;
-  border-radius: 10px;
-  line-height: 1.35;
+  padding: 6px 10px;
+  color: #25334b;
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid #b8c5da;
+  border-radius: 9px;
+  box-shadow: 0 3px 10px rgb(36 58 96 / 8%);
+  line-height: 1.4;
 }
 
-.mindmap-summaries {
-  padding: 10px 14px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  background: white;
-  border-top: 1px solid #e4e7ec;
+.mindmap-svg-wrap .markmap-node[data-depth="0"] .markmap-foreign div {
+  color: white;
+  background: #315fc4;
+  border-color: #315fc4;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
 }
 
-.mindmap-summaries p {
-  min-width: 0;
-  margin: 0;
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  background: #f7f8fb;
-  border-radius: 8px;
+.mindmap-svg-wrap .markmap-node[data-depth="1"] .markmap-foreign div {
+  color: #173d83;
+  background: #edf3ff;
+  border-color: #7899df;
+  font-size: 14px;
+  font-weight: 700;
 }
 
-.mindmap-summaries strong {
-  color: #33425d;
-  font-size: 11px;
+.mindmap-svg-wrap .markmap-node[data-depth="2"] .markmap-foreign div {
+  background: #fff;
+  border-color: #aab9d0;
+  font-weight: 600;
 }
 
-.mindmap-summaries span {
-  overflow: hidden;
-  color: #737f91;
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.mindmap-svg-wrap .markmap-link {
+  stroke-width: 2px;
+  opacity: 0.78;
 }
 
-.mindmap-trace {
-  padding: 5px 14px 7px;
-  color: #929aaa;
-  text-align: right;
-  background: white;
-  font-size: 9px;
+.mindmap-svg-wrap .markmap-node > circle {
+  stroke-width: 2px;
 }
 
 .empty-copy {
@@ -1702,10 +1688,6 @@ button:disabled {
 
   .source-pane {
     min-height: 680px;
-  }
-
-  .mindmap-summaries {
-    grid-template-columns: 1fr;
   }
 
   .mindmap-toolbar {
