@@ -13,7 +13,7 @@ import { UploadPanel } from "./components/UploadPanel";
 import { VideoLibrary } from "./components/VideoLibrary";
 import type { AgentLog, CitationTarget, Guide, ModelStatus, Paper, VideoResource } from "./types";
 
-type View = "workspace" | "contents" | "bilingual" | "mindmap" | "logs" | "videos";
+type View = "workspace" | "chat" | "contents" | "bilingual" | "mindmap" | "logs" | "videos";
 
 export default function App() {
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -38,7 +38,7 @@ export default function App() {
   };
 
   const openView = (next: View) => {
-    if ((next === "contents" || next === "bilingual" || next === "mindmap") && !paper) {
+    if ((next === "chat" || next === "contents" || next === "bilingual" || next === "mindmap") && !paper) {
       setPaper(papers.find((item) => item.status === "ready") ?? null);
     }
     setView(next);
@@ -204,6 +204,7 @@ export default function App() {
         </div>
         <nav>
           <button className={view === "workspace" ? "active" : ""} onClick={() => openView("workspace")}>阅读工作台</button>
+          <button className={view === "chat" ? "active" : ""} onClick={() => openView("chat")}>论文问答</button>
           <button className={view === "contents" ? "active" : ""} onClick={() => openView("contents")}>结构化内容</button>
           <button className={view === "bilingual" ? "active" : ""} onClick={() => openView("bilingual")}>中英对照</button>
           <button className={view === "mindmap" ? "active" : ""} onClick={() => openView("mindmap")}>思维导图</button>
@@ -228,6 +229,12 @@ export default function App() {
       {view === "workspace" && <div className="workspace">
         <aside className="sidebar">
           <UploadPanel uploading={uploading} onUpload={upload} />
+          <GuidePanel
+            guide={guide}
+            loading={guideLoading}
+            disabled={!paper || paper.status !== "ready"}
+            onGenerate={generateGuide}
+          />
           <div className="paper-list">
             <div className="section-heading compact">
               <h2>论文库</h2>
@@ -282,18 +289,17 @@ export default function App() {
               </div>
             ))}
           </div>
-          <GuidePanel
-            guide={guide}
-            loading={guideLoading}
-            disabled={!paper || paper.status !== "ready"}
-            onGenerate={generateGuide}
-          />
           <TranslationPanel paperId={paper?.status === "ready" ? paper.id : undefined} />
         </aside>
 
         <PaperReader paper={paper} targetCitation={targetCitation} />
         <ChatPanel paperId={paper?.status === "ready" ? paper.id : undefined} onLocate={setTargetCitation} />
       </div>}
+      {view === "chat" && (
+        <div className="standalone-chat-page">
+          <ChatPanel paperId={paper?.status === "ready" ? paper.id : undefined} onLocate={setTargetCitation} />
+        </div>
+      )}
       {view === "logs" && <AgentLogView logs={logs} loading={viewLoading} onRefresh={loadLogs} />}
       {view === "videos" && <VideoLibrary videos={videos} loading={viewLoading} onChanged={loadVideos} />}
       {view === "contents" && (

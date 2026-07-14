@@ -117,6 +117,22 @@ button:disabled {
   background: #dce2eb;
 }
 
+.standalone-chat-page {
+  height: calc(100vh - 68px);
+  padding: 24px;
+  background: #e8edf4;
+}
+
+.standalone-chat-page .chat-panel {
+  width: min(960px, 100%);
+  height: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #dce3ed;
+  border-radius: 16px;
+  box-shadow: 0 14px 36px rgb(28 45 72 / 12%);
+}
+
 .sidebar,
 .reader,
 .chat-panel {
@@ -1554,6 +1570,13 @@ button:disabled {
 }
 
 @media (max-width: 900px) {
+  .topbar {
+    height: auto;
+    min-height: 68px;
+    padding: 10px 14px 0;
+    flex-wrap: wrap;
+  }
+
   .workspace {
     height: auto;
     grid-template-columns: 1fr;
@@ -1566,7 +1589,29 @@ button:disabled {
   }
 
   .topbar nav {
-    display: none;
+    width: 100%;
+    height: 46px;
+    order: 3;
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+
+  .topbar nav button {
+    height: 46px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .standalone-chat-page {
+    height: calc(100vh - 124px);
+    padding: 12px;
+  }
+
+  .standalone-chat-page .chat-panel {
+    min-height: 0;
   }
 
   .agent-summary {
