@@ -9,6 +9,7 @@ backend/data/uploads/*
 backend/data/indexes/*
 backend/data/assets/*
 backend/data/logs/*
+backend/data/translations/*
 backend/data/papers.json
 !backend/data/**/.gitkeep
 frontend/node_modules/

@@ -45,6 +45,25 @@ export interface PaperContentsResponse {
   items: PaperChunk[];
 }
 
+export interface BilingualBlock {
+  chunk_id: string;
+  page: number;
+  kind: string;
+  source_text: string;
+  translated_text: string;
+  resource_url?: string | null;
+  bbox?: number[] | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface BilingualPage {
+  paper_id: string;
+  page: number;
+  target_language: string;
+  blocks: BilingualBlock[];
+  agent_trace_id: string;
+}
+
 export interface VideoResource {
   id: string;
   title: string;

@@ -1,5 +1,6 @@
 import type {
   AgentLog,
+  BilingualPage,
   ChatResponse,
   Guide,
   MindMap,
@@ -89,6 +90,22 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, target_language: "中文" })
     }),
+
+  cachedBilingual: async (paperId: string, page: number) => {
+    const response = await fetch(`/api/papers/${paperId}/bilingual/${page}`);
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.detail ?? `请求失败：${response.status}`);
+    }
+    return response.json() as Promise<BilingualPage>;
+  },
+
+  createBilingual: (paperId: string, page: number, refresh = false) =>
+    request<BilingualPage>(
+      `/api/papers/${paperId}/bilingual/${page}?refresh=${refresh}`,
+      { method: "POST" }
+    ),
 
   listVideos: () => request<VideoResource[]>("/api/videos"),
 

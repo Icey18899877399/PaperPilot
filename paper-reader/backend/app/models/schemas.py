@@ -104,6 +104,25 @@ class TranslationResponse(BaseModel):
     agent_trace_id: str
 
 
+class BilingualBlock(BaseModel):
+    chunk_id: str
+    page: int
+    kind: str
+    source_text: str
+    translated_text: str
+    resource_url: str | None = None
+    bbox: list[float] | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class BilingualPageResponse(BaseModel):
+    paper_id: str
+    page: int
+    target_language: str
+    blocks: list[BilingualBlock]
+    agent_trace_id: str
+
+
 class ChatRequest(BaseModel):
     paper_id: str
     question: str = Field(min_length=1)
