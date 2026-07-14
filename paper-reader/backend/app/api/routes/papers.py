@@ -18,6 +18,7 @@ from fastapi import (
 
 from app.core.config import get_settings
 from app.models.schemas import (
+    BilingualPageResponse,
     GuideResponse,
     MindMapResponse,
     PaperContentsResponse,
@@ -318,3 +319,67 @@ async def translate(
         text=request.text,
         target_language=request.target_language,
     )
+
+
+@router.get(
+    "/{paper_id}/bilingual/{page}",
+    response_model=BilingualPageResponse,
+)
+def get_cached_bilingual_page(
+    paper_id: str,
+    page: int,
+    target_language: str = Query(default="中文"),
+) -> BilingualPageResponse:
+    paper = get_paper(paper_id)
+    if page < 1 or (paper.page_count and page > paper.page_count):
+        raise HTTPException(status_code=404, detail="论文页码不存在")
+    cached = runtime.store.load_bilingual_page(paper_id, page, target_language)
+    if not cached:
+        raise HTTPException(status_code=404, detail="本页尚未生成中文译文")
+    return cached
+
+
+@router.post(
+    "/{paper_id}/bilingual/{page}",
+    response_model=BilingualPageResponse,
+)
+async def create_bilingual_page(
+    paper_id: str,
+    page: int,
+    target_language: str = Query(default="中文"),
+    refresh: bool = Query(default=False),
+) -> BilingualPageResponse:
+    paper = get_paper(paper_id)
+    if paper.status != PaperStatus.ready:
+        raise HTTPException(status_code=409, detail="论文尚未解析完成")
+    if page < 1 or (paper.page_count and page > paper.page_count):
+        raise HTTPException(status_code=404, detail="论文页码不存在")
+    if not refresh:
+        cached = runtime.store.load_bilingual_page(paper_id, page, target_language)
+        if cached:
+            return cached
+
+    chunks = [
+        chunk
+        for chunk in runtime.kb.all_chunks(paper_id)
+        if chunk.page == page
+        and chunk.kind in {"text", "list", "image", "chart", "table", "equation", "code"}
+    ]
+    if not chunks:
+        raise HTTPException(status_code=404, detail="本页没有可用于对照阅读的解析内容")
+    trace_id = runtime.coordinator.new_trace_id()
+    blocks = await runtime.coordinator.run(
+        "translate-page",
+        trace_id=trace_id,
+        chunks=chunks,
+        target_language=target_language,
+    )
+    result = BilingualPageResponse(
+        paper_id=paper_id,
+        page=page,
+        target_language=target_language,
+        blocks=blocks,
+        agent_trace_id=trace_id,
+    )
+    runtime.store.save_bilingual_page(result)
+    return result

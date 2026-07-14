@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { api } from "./api";
 import { AgentLogView } from "./components/AgentLogView";
+import { BilingualReader } from "./components/BilingualReader";
 import { ChatPanel } from "./components/ChatPanel";
 import { GuidePanel } from "./components/GuidePanel";
 import { MindMapView } from "./components/MindMapView";
@@ -12,7 +13,7 @@ import { UploadPanel } from "./components/UploadPanel";
 import { VideoLibrary } from "./components/VideoLibrary";
 import type { AgentLog, CitationTarget, Guide, ModelStatus, Paper, VideoResource } from "./types";
 
-type View = "workspace" | "contents" | "mindmap" | "logs" | "videos";
+type View = "workspace" | "contents" | "bilingual" | "mindmap" | "logs" | "videos";
 
 export default function App() {
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -37,7 +38,7 @@ export default function App() {
   };
 
   const openView = (next: View) => {
-    if ((next === "contents" || next === "mindmap") && !paper) {
+    if ((next === "contents" || next === "bilingual" || next === "mindmap") && !paper) {
       setPaper(papers.find((item) => item.status === "ready") ?? null);
     }
     setView(next);
@@ -198,6 +199,7 @@ export default function App() {
         <nav>
           <button className={view === "workspace" ? "active" : ""} onClick={() => openView("workspace")}>阅读工作台</button>
           <button className={view === "contents" ? "active" : ""} onClick={() => openView("contents")}>结构化内容</button>
+          <button className={view === "bilingual" ? "active" : ""} onClick={() => openView("bilingual")}>中英对照</button>
           <button className={view === "mindmap" ? "active" : ""} onClick={() => openView("mindmap")}>思维导图</button>
           <button className={view === "logs" ? "active" : ""} onClick={() => setView("logs")}>Agent日志</button>
           <button className={view === "videos" ? "active" : ""} onClick={() => setView("videos")}>视频资源</button>
@@ -291,6 +293,7 @@ export default function App() {
       {view === "contents" && (
         <StructuredContentView paper={paper} />
       )}
+      {view === "bilingual" && <BilingualReader paper={paper} />}
       <div hidden={view !== "mindmap"}>
         <MindMapView paper={paper} />
       </div>
