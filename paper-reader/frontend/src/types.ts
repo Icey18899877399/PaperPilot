@@ -45,6 +45,14 @@ export interface PaperContentsResponse {
   items: PaperChunk[];
 }
 
+export interface ChunkExplanation {
+  paper_id: string;
+  chunk_id: string;
+  page: number;
+  explanation: string;
+  agent_trace_id: string;
+}
+
 export interface BilingualBlock {
   chunk_id: string;
   page: number;

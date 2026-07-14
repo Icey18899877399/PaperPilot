@@ -48,12 +48,14 @@ class TranslationAgent(BaseAgent):
         generated = await self.llm.complete_json(
             (
                 f"你是学术论文排版翻译Agent。把每个段落忠实翻译为{target_language}，"
-                "保留人名、术语、公式、引用编号和列表结构。只输出JSON对象，格式为"
+                "保留人名、术语、公式、引用编号和列表结构。对于表格块，必须翻译表头、"
+                "行名和每个文字单元格，并用换行与竖线保留行列关系，不得只翻译表题。"
+                "只输出JSON对象，格式为"
                 '{"translations":[{"chunk_id":"原ID","translated_text":"译文"}]}。'
                 "不得遗漏或合并段落，也不要输出解释。"
             ),
             json.dumps(payload, ensure_ascii=False),
-            max_tokens=4000,
+            max_tokens=6000,
         )
         translations: dict[str, str] = {}
         if generated and isinstance(generated.get("translations"), list):

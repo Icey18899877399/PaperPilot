@@ -1,4 +1,4 @@
-import { MouseEvent, useEffect, useRef, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 
 import { api } from "../api";
@@ -23,6 +23,11 @@ interface SelectionHighlight {
   top: number;
   width: number;
   height: number;
+}
+
+interface TranslationPopupPosition {
+  left: number;
+  top: number;
 }
 
 interface SearchablePdfDocument {
@@ -57,6 +62,8 @@ export function PaperReader({
   const [selectedTranslation, setSelectedTranslation] = useState("");
   const [translationLoading, setTranslationLoading] = useState(false);
   const [translationError, setTranslationError] = useState("");
+  const [translationPopupPosition, setTranslationPopupPosition] =
+    useState<TranslationPopupPosition | null>(null);
   const pageWrapRef = useRef<HTMLDivElement>(null);
   const pdfCanvasRef = useRef<HTMLDivElement>(null);
   const translationRequestId = useRef(0);
@@ -69,6 +76,7 @@ export function PaperReader({
     setSelectedTranslation("");
     setTranslationLoading(false);
     setTranslationError("");
+    setTranslationPopupPosition(null);
     onSourceSelection?.("");
     window.getSelection()?.removeAllRanges();
   };
@@ -139,6 +147,10 @@ export function PaperReader({
       spans.forEach((span) => span.classList.remove("paired-source-highlight"));
     };
   }, [page, pairedSourceText, textLayerVersion, zoom]);
+
+  const handleTextLayerRendered = useCallback(() => {
+    setTextLayerVersion((value) => value + 1);
+  }, []);
 
   const searchDocument = async () => {
     const query = searchQuery.trim().toLocaleLowerCase();
@@ -238,9 +250,22 @@ export function PaperReader({
       }));
     if (!highlights.length) return;
 
+    const selectionRect = range.getBoundingClientRect();
+    const popupWidth = 360;
+    const popupHeight = 360;
+    const left = Math.max(
+      12,
+      Math.min(selectionRect.right + 14, window.innerWidth - popupWidth - 12),
+    );
+    const top = Math.max(
+      86,
+      Math.min(selectionRect.top, window.innerHeight - popupHeight - 12),
+    );
+
     event.stopPropagation();
     setSelectedText(text);
     setSelectionHighlights(highlights);
+    setTranslationPopupPosition({ left, top });
     onSourceSelection?.(text);
     void translateSelectedText(text);
   };
@@ -304,6 +329,7 @@ export function PaperReader({
       <div className="pdf-canvas" ref={pdfCanvasRef}>
         <div className="pdf-reader-stage">
           <Document
+            key={paper.id}
             file={paper.file_url}
             onLoadSuccess={(loadedDocument) => {
               setPdfDocument(loadedDocument);
@@ -315,11 +341,12 @@ export function PaperReader({
           >
             <div className="pdf-page-wrap" ref={pageWrapRef} onMouseUp={selectText}>
               <Page
+                key={`${paper.id}-${page}-${renderedPageWidth}`}
                 pageNumber={page}
                 width={renderedPageWidth}
                 renderTextLayer
                 renderAnnotationLayer
-                onRenderTextLayerSuccess={() => setTextLayerVersion((value) => value + 1)}
+                onRenderTextLayerSuccess={handleTextLayerRendered}
               />
               {selectionHighlights.map((selectionHighlight, index) => (
                 <div
@@ -331,8 +358,12 @@ export function PaperReader({
               ))}
             </div>
           </Document>
-          {selectedText && (
-            <aside className="selection-translation-panel">
+          {selectedText && translationPopupPosition && (
+            <aside
+              className="selection-translation-panel floating-selection-translation-panel"
+              style={translationPopupPosition}
+              title="拖动右下角可缩放翻译框"
+            >
               <header>
                 <div>
                   <span>划词翻译</span>
@@ -350,7 +381,7 @@ export function PaperReader({
                 {translationError && <p className="selection-error">{translationError}</p>}
                 {selectedTranslation && <p>{selectedTranslation}</p>}
               </section>
-              <small>选区已持续高亮，原文可以复制。</small>
+              <small>选区会持续高亮；拖动右下角可缩放此窗口。</small>
             </aside>
           )}
         </div>

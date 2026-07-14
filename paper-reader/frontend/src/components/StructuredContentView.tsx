@@ -24,10 +24,16 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
   const [selected, setSelected] = useState<PaperChunk | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [explanations, setExplanations] = useState<Record<string, string>>({});
+  const [explanationErrors, setExplanationErrors] = useState<Record<string, string>>({});
+  const [explainingChunkId, setExplainingChunkId] = useState<string | null>(null);
 
   useEffect(() => {
     setContents(null);
     setSelected(null);
+    setExplanations({});
+    setExplanationErrors({});
+    setExplainingChunkId(null);
     if (!paper || paper.status !== "ready") return;
     setLoading(true);
     setError("");
@@ -39,6 +45,32 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
       .catch((reason) => setError((reason as Error).message))
       .finally(() => setLoading(false));
   }, [paper?.id, paper?.status, kind]);
+
+  const selectAndExplain = async (item: PaperChunk) => {
+    setSelected(item);
+    onLocate?.({ page: item.page, bbox: null });
+    if (!paper || explanations[item.chunk_id] || explainingChunkId === item.chunk_id) {
+      return;
+    }
+    setExplainingChunkId(item.chunk_id);
+    setExplanationErrors((current) => ({ ...current, [item.chunk_id]: "" }));
+    try {
+      const result = await api.explainChunk(paper.id, item.chunk_id);
+      setExplanations((current) => ({
+        ...current,
+        [item.chunk_id]: result.explanation,
+      }));
+    } catch (reason) {
+      setExplanationErrors((current) => ({
+        ...current,
+        [item.chunk_id]: (reason as Error).message,
+      }));
+    } finally {
+      setExplainingChunkId((current) => (
+        current === item.chunk_id ? null : current
+      ));
+    }
+  };
 
   if (compact) {
     if (!paper || paper.status !== "ready") {
@@ -80,18 +112,22 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
             const label = filters.find((filter) => filter.kind === item.kind)?.label
               ?? item.kind;
             return (
-              <button
-                type="button"
+              <article
+                role="button"
+                tabIndex={0}
                 className={`chunk-card ${selected?.chunk_id === item.chunk_id ? "selected" : ""}`}
                 key={item.chunk_id}
-                onClick={() => {
-                  setSelected(item);
-                  onLocate?.({ page: item.page, bbox: null });
+                onClick={() => void selectAndExplain(item)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    void selectAndExplain(item);
+                  }
                 }}
               >
                 <header>
                   <strong>第{item.page}页 · {label}</strong>
-                  <span>{selected?.chunk_id === item.chunk_id ? "当前切片" : "查看原文"}</span>
+                  <span>{selected?.chunk_id === item.chunk_id ? "当前切片" : "点击并解释"}</span>
                 </header>
                 {item.resource_url && (
                   <img src={item.resource_url} alt={`第${item.page}页${label}`} />
@@ -99,7 +135,19 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
                 {item.kind === "equation"
                   ? <pre>{latex || item.content}</pre>
                   : item.kind !== "table" && <p>{item.content}</p>}
-              </button>
+                {selected?.chunk_id === item.chunk_id && (
+                  <div className="chunk-ai-explanation">
+                    <strong>AI 切片解释</strong>
+                    {explainingChunkId === item.chunk_id && <p className="chunk-explanation-loading">正在结合本切片生成解释…</p>}
+                    {explanationErrors[item.chunk_id] && (
+                      <p className="chunk-explanation-error">
+                        {explanationErrors[item.chunk_id]}，再次点击可重试。
+                      </p>
+                    )}
+                    {explanations[item.chunk_id] && <p>{explanations[item.chunk_id]}</p>}
+                  </div>
+                )}
+              </article>
             );
           })}
           {!loading && contents && !contents.items.length && (

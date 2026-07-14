@@ -64,6 +64,14 @@ class PaperContentsResponse(BaseModel):
     items: list[PaperChunk]
 
 
+class ChunkExplanationResponse(BaseModel):
+    paper_id: str
+    chunk_id: str
+    page: int
+    explanation: str
+    agent_trace_id: str
+
+
 class GuideResponse(BaseModel):
     paper_id: str
     title: str

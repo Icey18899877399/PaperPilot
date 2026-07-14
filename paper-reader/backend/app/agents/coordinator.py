@@ -30,6 +30,8 @@ class CoordinatorAgent(BaseAgent):
             return await self.paper_agent.run(trace_id=trace_id, **payload)
         if task == "mind-map":
             return await self.paper_agent.run_mind_map(trace_id=trace_id, **payload)
+        if task == "explain-chunk":
+            return await self.paper_agent.explain_chunk(trace_id=trace_id, **payload)
         if task == "translate":
             return await self.translation_agent.run(trace_id=trace_id, **payload)
         if task == "translate-page":

@@ -647,6 +647,36 @@ button:disabled {
   line-height: 1.5;
 }
 
+.translated-table-block {
+  margin: 14px 0;
+  padding: 12px;
+  background: #f7f9fc;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
+}
+
+.translated-table-block > strong {
+  color: #40526f;
+  font-size: 12px;
+}
+
+.translated-table-text {
+  max-width: 100%;
+  margin: 8px 0 0;
+  padding: 10px;
+  overflow: auto;
+  color: #27344a;
+  background: #fff;
+  border: 1px solid #e2e7ef;
+  border-radius: 6px;
+  font-family: "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.65;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
 .translated-equation,
 .translated-code {
   margin: 16px auto;
@@ -893,6 +923,7 @@ button:disabled {
   border-radius: 12px;
   box-shadow: 0 4px 14px rgb(0 0 0 / 12%);
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+  cursor: pointer;
 }
 
 .chunk-card:hover {
@@ -951,6 +982,36 @@ button:disabled {
   background: #1c2532;
   border-radius: 8px;
   font-family: Consolas, monospace;
+}
+
+.chunk-card .chunk-ai-explanation {
+  margin-top: 12px;
+  padding: 12px;
+  color: #dbe7ff;
+  background: #1c2636;
+  border: 1px solid #49618b;
+  border-radius: 9px;
+  cursor: default;
+}
+
+.chunk-card .chunk-ai-explanation > strong {
+  color: #8eb0ff;
+  font-size: 12px;
+}
+
+.chunk-card .chunk-ai-explanation p {
+  max-height: none;
+  margin-top: 7px;
+  color: #e2e9f6;
+  line-height: 1.75;
+}
+
+.chunk-card .chunk-ai-explanation .chunk-explanation-loading {
+  color: #9db7f3;
+}
+
+.chunk-card .chunk-ai-explanation .chunk-explanation-error {
+  color: #ffb7b7;
 }
 
 .source-pane {
@@ -1219,6 +1280,15 @@ button:disabled {
   margin: auto;
 }
 
+.pdf-canvas .react-pdf__Page,
+.pdf-canvas .react-pdf__Page__canvas {
+  display: block;
+}
+
+.pdf-canvas .react-pdf__Page__canvas {
+  height: auto !important;
+}
+
 .pdf-page-wrap .textLayer {
   z-index: 6;
 }
@@ -1249,6 +1319,24 @@ button:disabled {
   border: 1px solid #d7dfeb;
   border-radius: 14px;
   box-shadow: 0 12px 28px rgb(30 45 70 / 16%);
+}
+
+.floating-selection-translation-panel {
+  width: 360px;
+  min-width: 280px;
+  min-height: 220px;
+  max-width: min(720px, calc(100vw - 24px));
+  max-height: calc(100vh - 98px);
+  position: fixed;
+  z-index: 40;
+  resize: both;
+}
+
+.floating-selection-translation-panel header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: white;
 }
 
 .selection-translation-panel header {

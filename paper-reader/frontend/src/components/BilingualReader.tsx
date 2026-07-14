@@ -63,8 +63,21 @@ function TranslatedBlock({ block, sourcePageWidth }: {
     return (
       <figure className={`translated-visual translated-${block.kind}`} style={{ width: `${imageWidth}%` }}>
         <img src={block.resource_url} alt={block.translated_text.slice(0, 80)} />
-        {block.translated_text && <figcaption>{block.translated_text}</figcaption>}
+        {block.translated_text && (
+          block.kind === "table"
+            ? <pre className="translated-table-text">{block.translated_text}</pre>
+            : <figcaption>{block.translated_text}</figcaption>
+        )}
       </figure>
+    );
+  }
+
+  if (block.kind === "table") {
+    return (
+      <section className="translated-table-block">
+        <strong>表格内容译文</strong>
+        <pre className="translated-table-text">{block.translated_text}</pre>
+      </section>
     );
   }
 
@@ -298,7 +311,7 @@ export function BilingualReader({
             <div className="translation-placeholder">
               <div>译</div>
               <strong>本页尚未生成中文译文</strong>
-              <p>点击生成后，译文会保留标题、正文、公式和插图的阅读顺序。</p>
+            <p>点击生成后，译文会保留标题、正文、表格、公式和插图的阅读顺序。</p>
               <button disabled={loading} onClick={() => void generate()}>
                 {loading ? "正在翻译…" : "生成本页中文"}
               </button>

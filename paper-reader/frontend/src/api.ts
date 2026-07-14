@@ -1,6 +1,7 @@
 import type {
   AgentLog,
   BilingualPage,
+  ChunkExplanation,
   ChatResponse,
   Guide,
   MindMap,
@@ -76,6 +77,12 @@ export const api = {
   paperContents: (paperId: string, kind: string) =>
     request<PaperContentsResponse>(
       `/api/papers/${paperId}/contents?kind=${encodeURIComponent(kind)}`
+    ),
+
+  explainChunk: (paperId: string, chunkId: string) =>
+    request<ChunkExplanation>(
+      `/api/papers/${paperId}/chunks/${encodeURIComponent(chunkId)}/explanation`,
+      { method: "POST" }
     ),
 
   chat: (paperId: string, question: string) =>
