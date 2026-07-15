@@ -64,6 +64,14 @@ class PaperContentsResponse(BaseModel):
     items: list[PaperChunk]
 
 
+class ChunkExplanationResponse(BaseModel):
+    paper_id: str
+    chunk_id: str
+    page: int
+    explanation: str
+    agent_trace_id: str
+
+
 class GuideResponse(BaseModel):
     paper_id: str
     title: str
@@ -104,18 +112,100 @@ class TranslationResponse(BaseModel):
     agent_trace_id: str
 
 
-class ChatRequest(BaseModel):
+class BilingualBlock(BaseModel):
+    chunk_id: str
+    page: int
+    kind: str
+    source_text: str
+    translated_text: str
+    resource_url: str | None = None
+    bbox: list[float] | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class BilingualPageResponse(BaseModel):
     paper_id: str
-    question: str = Field(min_length=1)
-    conversation_id: str | None = None
+    page: int
+    target_language: str
+    blocks: list[BilingualBlock]
+    agent_trace_id: str
 
 
 class VideoResource(BaseModel):
     id: str
     title: str
     description: str = ""
+    cover_url: str = "/media/videos/default-video-cover.svg"
+    source: str = "本地维护"
     keywords: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    knowledge_points: list[str] = Field(default_factory=list)
     file_url: str
+    local_path: str = ""
+    file_sha256: str | None = None
+    recommendation_reason: str | None = None
+
+
+class VideoUpdateRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    source: str | None = None
+    keywords: list[str] | None = None
+    tags: list[str] | None = None
+    knowledge_points: list[str] | None = None
+
+
+class LearningResourceType(StrEnum):
+    paper = "paper"
+    video = "video"
+    article = "article"
+    course = "course"
+    documentation = "documentation"
+    local = "local"
+
+
+class LearningSearchRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=500)
+    paper_id: str | None = None
+    resource_types: list[LearningResourceType] = Field(default_factory=list)
+
+
+class LearningResource(BaseModel):
+    id: str
+    resource_type: LearningResourceType
+    title: str
+    description: str = ""
+    source: str
+    url: str
+    authors: list[str] = Field(default_factory=list)
+    published_year: int | None = None
+    thumbnail_url: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    relevance_reason: str = ""
+    local: bool = False
+
+
+class LearningProviderStatus(BaseModel):
+    provider: str
+    enabled: bool = True
+    success: bool = True
+    message: str = ""
+
+
+class LearningSearchResponse(BaseModel):
+    query: str
+    interpreted_query: str
+    summary: str
+    learning_path: list[str] = Field(default_factory=list)
+    resources: list[LearningResource] = Field(default_factory=list)
+    providers: list[LearningProviderStatus] = Field(default_factory=list)
+    agent_trace_id: str
+
+
+class ChatRequest(BaseModel):
+    paper_id: str
+    question: str = Field(min_length=1)
+    conversation_id: str | None = None
 
 
 class ChatResponse(BaseModel):

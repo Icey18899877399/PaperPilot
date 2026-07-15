@@ -1,0 +1,249 @@
+{
+  "id": "985afdb2468843469fcee0ad92a214e9",
+  "paper_id": "mineru-smoke-2025.coling-main.353",
+  "title": "解释论文中的核心方法",
+  "messages": [
+    {
+      "id": "33c8756f9bdc47f49a886f98bd84b710",
+      "role": "user",
+      "text": "解释论文中的核心方法",
+      "citations": [],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-15T07:36:57.677822Z"
+    },
+    {
+      "id": "099a49ab34cf487582ca3ed5632b840d",
+      "role": "assistant",
+      "text": "📌 核心要点：论文在第3页定义了三种开放式的复杂事件预测任务（短期、长期、论元级），并介绍了为支持这些任务而构建的OpenForecast数据集及其收集流程。\n\n● 任务定义方面，论文首先将复杂事件CE定义为同一主题下按时间顺序排列的事件链，即“$C E = \\{ e _ { 1 } , e _ { 2 } . . . e _ { n } \\}$”【第3页】。时间戳$T_k$将事件链划分为背景事件$X$和目标事件$Y$。基于此，论文设计了三种开放式预测任务：\n  ① 短期预测（STF）：给定时间戳$T_k$，模型需预测该时刻发生的所有多方面原子事件【第3页】。\n  ② 长期预测（LTF）：模型需预测$T_k$之后的多步事件链演化【第3页】。\n  ③ 论元级问答（AQA）：模型需回答关于事件类型、主体、客体、时间、地点等细粒度论元的问题，例如“Who will”对应答案“Ukraine”【第3页】。\n\n● 此外，论文还提出了三种封闭式任务：\n  ① 多选叙事填空（MCNC）：从四个候选事件中选出正确的一个【第3页】。\n  ② 多选论元填空（MCAC）：从四个候选答案中选出正确的论元【第3页】。\n  ③ 验证问答（VQA）：判断给定候选事件是否会发生【第3页】。\n\n● 数据集构建方面，论文指出当前缺乏支持开放式任务的数据集，因此提出了OpenForecast数据集。其构建流程包括三个步骤：“(1) dataset collection for complex events; (2) event timeline annotation; (3) question generation”【第3页】。数据来源为Wikipedia和Wikipedia Current Events Portal（WCEP），经过多步过滤去除重复、非事件和非当代数据后，将同一主题的文章分组，形成大规模高质量复杂事件集合【第3页】。\n\n---\n💡 提示：第3页主要聚焦任务定义与数据收集框架，后续章节（如第4节）可能详细展开数据标注与生成的具体细节。",
+      "citations": [
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m30",
+          "page": 3,
+          "quote": "3 Task Definition",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            114.0,
+            196.0,
+            282.0,
+            212.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m31",
+          "page": 3,
+          "quote": "Given a complex event CE, we define the input as the background X before a specified time $T$ and question Q, with the subsequent multifaceted developments as the gold answer Y . D",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            112.0,
+            224.0,
+            489.0,
+            322.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m32",
+          "page": 3,
+          "quote": "Based on previous studies (Ma et al., 2023), we define a complex event CE as a chronologically ordered event chain $C E = \\{ e _ { 1 } , e _ { 2 } . . . e _ { n } \\}$ on the same t",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            112.0,
+            323.0,
+            489.0,
+            468.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m33",
+          "page": 3,
+          "quote": "To facilitate the unforeseen, multifaceted, and multi-step event forecasting, we design a shortterm and a long-term forecasting tasks, which predict events on a specific date and l",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            112.0,
+            468.0,
+            490.0,
+            709.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m34",
+          "page": 3,
+          "quote": "Short-Term Forecasting (STF). This task examines the short-term event forecasting ability on a given timestamp $T _ { k }$ . With event background X as input, all multifaceted atom",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            112.0,
+            711.0,
+            489.0,
+            791.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m35",
+          "page": 3,
+          "quote": "Long-Term Forecasting (LTF). This task examines the ability to forecast long-term event evolution after a given timestamp $T _ { k }$ . With event background X as input, models are",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            112.0,
+            793.0,
+            489.0,
+            872.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m36",
+          "page": 3,
+          "quote": "Argument-level QA (AQA). This task examines the forecasting ability on fine-grained event arguments, including event type, subject, object, time, and location. In this task, models",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            112.0,
+            875.0,
+            489.0,
+            922.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m38",
+          "page": 3,
+          "quote": "Based on existing closed-ended tasks, we also propose three closed-ended tasks:",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            509.0,
+            152.0,
+            885.0,
+            184.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m39",
+          "page": 3,
+          "quote": "Multi-Choice Narrative Cloze (MCNC). Similar to script event prediction, models are provided with event background X and four subsequent candidate events, with one gold answer insi",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            507.0,
+            186.0,
+            885.0,
+            252.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m40",
+          "page": 3,
+          "quote": "Multi-Choice Argument-level Cloze (MCAC). Similar to AQA, four candidate answers are additionally provided, with one gold answer inside.",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            509.0,
+            254.0,
+            885.0,
+            303.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m41",
+          "page": 3,
+          "quote": "Verify QA (VQA). In this task, given the event background and one candidate event, models need to predict whether the candidate event will occur.",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            507.0,
+            305.0,
+            885.0,
+            354.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m42",
+          "page": 3,
+          "quote": "4 Dataset Construction Pipeline",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            509.0,
+            374.0,
+            803.0,
+            391.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m43",
+          "page": 3,
+          "quote": "We review current event forecasting datasets and identify a lack of datasets for the open-ended tasks. To support these tasks above, we present OpenForecast, a large-scale dataset.",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            507.0,
+            406.0,
+            887.0,
+            520.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m44",
+          "page": 3,
+          "quote": "4.1 Dataset Collection",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            509.0,
+            539.0,
+            700.0,
+            554.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m45",
+          "page": 3,
+          "quote": "To enable forecasting on unforeseen, multifaceted, and multi-step events, it is essential to collect complex events with unforeseen changes and complete multifaceted evolutions, in",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            507.0,
+            565.0,
+            885.0,
+            646.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m46",
+          "page": 3,
+          "quote": "In this paper, we collect data from two projects: Wikipedia and Wikipedia Current Events Portal (WCEP). Wikipedia offers numerous articles on historical events, providing detailed ",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            507.0,
+            649.0,
+            887.0,
+            922.0
+          ]
+        },
+        {
+          "chunk_id": "mineru-smoke-2025.coling-main.353-m47",
+          "page": 3,
+          "quote": "5275",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            480.0,
+            922.0,
+            521.0,
+            935.0
+          ]
+        }
+      ],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-15T07:36:57.677822Z"
+    }
+  ],
+  "created_at": "2026-07-15T07:36:51.187402Z",
+  "updated_at": "2026-07-15T07:36:57.678326Z"
+}

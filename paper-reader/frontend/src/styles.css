@@ -1013,11 +1013,8 @@ button:disabled {
   font-size: 11px;
 }
 
-<<<<<<< HEAD
-=======
 /* ── conversation selector ────────────────────────────────────── */
 
->>>>>>> 4c4558d (更新说明)
 .conversation-selector {
   display: flex;
   flex-wrap: wrap;
