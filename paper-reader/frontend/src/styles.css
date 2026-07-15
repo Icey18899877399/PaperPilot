@@ -1013,6 +1013,11 @@ button:disabled {
   font-size: 11px;
 }
 
+<<<<<<< HEAD
+=======
+/* ── conversation selector ────────────────────────────────────── */
+
+>>>>>>> 4c4558d (更新说明)
 .conversation-selector {
   display: flex;
   flex-wrap: wrap;
@@ -1137,17 +1142,21 @@ button:disabled {
 .message p {
   margin: 0;
   padding: 10px 12px;
-  line-height: 1.55;
+  line-height: 1.7;
   color: #344158;
   background: #f2f5f9;
   border-radius: 4px 12px 12px;
   font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .message.user p {
   color: white;
   background: #365fd1;
   border-radius: 12px 4px 12px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .evidence-warning {
@@ -1209,6 +1218,18 @@ button:disabled {
 .thinking {
   color: #778398;
   font-size: 12px;
+}
+
+.evidence-warning {
+  display: inline-block;
+  padding: 2px 8px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
 }
 
 .video-card {

@@ -1,8 +1,15 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import { api } from "../api";
+<<<<<<< HEAD
 import type { ChatResponse, CitationTarget, Conversation } from "../types";
 import { VideoPlayer } from "./VideoPlayer";
+=======
+import { useConversations } from "../hooks/useConversations";
+import type { ChatResponse, CitationTarget } from "../types";
+import { ConversationSelector } from "./ConversationSelector";
+import { VideoRecommendationCard } from "./VideoRecommendationCard";
+>>>>>>> 4c4558d (更新说明)
 
 interface Message {
   role: "user" | "assistant";
@@ -33,6 +40,7 @@ export function ChatPanel({ paperId, onLocate }: Props) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [switchLoading, setSwitchLoading] = useState(false);
 
+<<<<<<< HEAD
   // ── load conversation list when paper changes ───────────────────
   const loadConversations = useCallback(async (paperId: string) => {
     try {
@@ -65,6 +73,25 @@ export function ChatPanel({ paperId, onLocate }: Props) {
       setSwitchLoading(true);
       try {
         const conv = await api.getConversation(paperId, convId);
+=======
+  const {
+    conversations,
+    activeId,
+    loadList,
+    loadMessages,
+    startNew,
+    switchTo,
+    remove,
+    addToList,
+  } = useConversations(paperId);
+
+  // ── load conversation messages when switching ──────────────────
+  const switchConversation = useCallback(
+    async (convId: string) => {
+      switchTo(convId);
+      const conv = await loadMessages(convId);
+      if (conv) {
+>>>>>>> 4c4558d (更新说明)
         setMessages(
           conv.messages.map((msg) => ({
             role: msg.role as "user" | "assistant",
@@ -82,6 +109,7 @@ export function ChatPanel({ paperId, onLocate }: Props) {
                 : undefined,
           }))
         );
+<<<<<<< HEAD
       } catch {
         // conversation not found → remove from list, start fresh
         setConversations((items) => items.filter((c) => c.id !== convId));
@@ -95,6 +123,13 @@ export function ChatPanel({ paperId, onLocate }: Props) {
   );
 
   // ── send message ────────────────────────────────────────────────
+=======
+      }
+    },
+    [switchTo, loadMessages]
+  );
+
+>>>>>>> 4c4558d (更新说明)
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const current = question.trim();
@@ -103,12 +138,21 @@ export function ChatPanel({ paperId, onLocate }: Props) {
     setMessages((items) => [...items, { role: "user", text: current }]);
     setLoading(true);
     try {
+<<<<<<< HEAD
       const result = await api.chat(paperId, current, conversationId ?? undefined);
       // persist conversation id
       if (result.conversation_id && !conversationId) {
         setConversationId(result.conversation_id);
         // refresh conversation list
         void loadConversations(paperId);
+=======
+      const result = await api.chat(paperId, current, activeId ?? undefined);
+      // Persist conversation id on first message
+      if (result.conversation_id && !activeId) {
+        switchTo(result.conversation_id);
+        // Refresh conversation list to include the new one
+        void loadList(paperId);
+>>>>>>> 4c4558d (更新说明)
       }
       setMessages((items) => [
         ...items,
@@ -160,6 +204,7 @@ export function ChatPanel({ paperId, onLocate }: Props) {
         </div>
         <span className="agent-status">Agent在线</span>
       </header>
+<<<<<<< HEAD
 
       {/* ── conversation selector ────────────────────────────────── */}
       {paperId && conversations.length > 0 && (
@@ -196,6 +241,17 @@ export function ChatPanel({ paperId, onLocate }: Props) {
             </div>
           ))}
         </div>
+=======
+      {/* ── conversation selector ──────────────────────────────── */}
+      {paperId && conversations.length > 0 && (
+        <ConversationSelector
+          conversations={conversations}
+          activeId={activeId}
+          onNew={() => { startNew(); setMessages([]); }}
+          onSwitch={(convId) => { void switchConversation(convId); }}
+          onDelete={(convId) => { void remove(convId); if (activeId === convId) setMessages([]); }}
+        />
+>>>>>>> 4c4558d (更新说明)
       )}
 
       <div className="messages">
