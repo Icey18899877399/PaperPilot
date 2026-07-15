@@ -1,8 +1,8 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import { api } from "../api";
-import type { ChatResponse, CitationTarget } from "../types";
-import { VideoRecommendationCard } from "./VideoRecommendationCard";
+import type { ChatResponse, CitationTarget, Conversation } from "../types";
+import { VideoPlayer } from "./VideoPlayer";
 
 interface Message {
   role: "user" | "assistant";
@@ -29,7 +29,72 @@ export function ChatPanel({ paperId, onLocate }: Props) {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [switchLoading, setSwitchLoading] = useState(false);
 
+  // ── load conversation list when paper changes ───────────────────
+  const loadConversations = useCallback(async (paperId: string) => {
+    try {
+      const list = await api.listConversations(paperId);
+      setConversations(list);
+      return list;
+    } catch {
+      setConversations([]);
+      return [];
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!paperId) {
+      setMessages([]);
+      setConversations([]);
+      setConversationId(null);
+      return;
+    }
+    // reset state for new paper
+    setMessages([]);
+    setConversationId(null);
+    void loadConversations(paperId);
+  }, [paperId, loadConversations]);
+
+  // ── load conversation messages when switching conversations ─────
+  const loadConversation = useCallback(
+    async (convId: string) => {
+      if (!paperId) return;
+      setSwitchLoading(true);
+      try {
+        const conv = await api.getConversation(paperId, convId);
+        setMessages(
+          conv.messages.map((msg) => ({
+            role: msg.role as "user" | "assistant",
+            text: msg.text,
+            result:
+              msg.role === "assistant"
+                ? {
+                    answer: msg.text,
+                    citations: msg.citations ?? [],
+                    videos: msg.videos ?? [],
+                    agent_trace_id: "",
+                    conversation_id: convId,
+                    evidence_sufficient: msg.evidence_sufficient ?? true,
+                  }
+                : undefined,
+          }))
+        );
+      } catch {
+        // conversation not found → remove from list, start fresh
+        setConversations((items) => items.filter((c) => c.id !== convId));
+        setConversationId(null);
+        setMessages([]);
+      } finally {
+        setSwitchLoading(false);
+      }
+    },
+    [paperId]
+  );
+
+  // ── send message ────────────────────────────────────────────────
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const current = question.trim();
@@ -38,7 +103,13 @@ export function ChatPanel({ paperId, onLocate }: Props) {
     setMessages((items) => [...items, { role: "user", text: current }]);
     setLoading(true);
     try {
-      const result = await api.chat(paperId, current);
+      const result = await api.chat(paperId, current, conversationId ?? undefined);
+      // persist conversation id
+      if (result.conversation_id && !conversationId) {
+        setConversationId(result.conversation_id);
+        // refresh conversation list
+        void loadConversations(paperId);
+      }
       setMessages((items) => [
         ...items,
         { role: "assistant", text: result.answer, result }
@@ -53,6 +124,33 @@ export function ChatPanel({ paperId, onLocate }: Props) {
     }
   };
 
+  // ── conversation management ─────────────────────────────────────
+  const startNewConversation = () => {
+    setConversationId(null);
+    setMessages([]);
+  };
+
+  const switchConversation = (convId: string) => {
+    setConversationId(convId);
+    void loadConversation(convId);
+  };
+
+  const deleteConversation = async (convId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!paperId) return;
+    if (!window.confirm("确定删除此对话？")) return;
+    try {
+      await api.deleteConversation(paperId, convId);
+      setConversations((items) => items.filter((c) => c.id !== convId));
+      if (conversationId === convId) {
+        setConversationId(null);
+        setMessages([]);
+      }
+    } catch {
+      // silently ignore — may already be deleted
+    }
+  };
+
   return (
     <section className="chat-panel">
       <header>
@@ -62,6 +160,44 @@ export function ChatPanel({ paperId, onLocate }: Props) {
         </div>
         <span className="agent-status">Agent在线</span>
       </header>
+
+      {/* ── conversation selector ────────────────────────────────── */}
+      {paperId && conversations.length > 0 && (
+        <div className="conversation-selector">
+          <button
+            className={!conversationId ? "conv-item active" : "conv-item"}
+            onClick={startNewConversation}
+          >
+            + 新对话
+          </button>
+          {conversations.map((conv) => (
+            <div
+              className={
+                conversationId === conv.id
+                  ? "conv-item active"
+                  : "conv-item"
+              }
+              key={conv.id}
+            >
+              <button
+                className="conv-label"
+                title={conv.title}
+                onClick={() => switchConversation(conv.id)}
+              >
+                {conv.title || "未命名对话"}
+              </button>
+              <button
+                className="conv-delete"
+                title="删除此对话"
+                onClick={(e) => void deleteConversation(conv.id, e)}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="messages">
         {!messages.length && (
           <div className="chat-welcome">
@@ -81,6 +217,9 @@ export function ChatPanel({ paperId, onLocate }: Props) {
           <article className={`message ${message.role}`} key={index}>
             <span>{message.role === "user" ? "你" : "AI"}</span>
             <div>
+              {message.result && !message.result.evidence_sufficient && (
+                <span className="evidence-warning">⚠ 证据不足</span>
+              )}
               <p>{message.text}</p>
               {message.result?.citations.map((citation) => (
                 <div className={`citation-card ${citation.kind}`} key={citation.chunk_id}>
@@ -97,7 +236,7 @@ export function ChatPanel({ paperId, onLocate }: Props) {
                 </div>
               ))}
               {message.result?.videos.map((video) => (
-                <VideoRecommendationCard key={video.id} video={video} />
+                <VideoPlayer key={video.id} video={video} />
               ))}
             </div>
           </article>

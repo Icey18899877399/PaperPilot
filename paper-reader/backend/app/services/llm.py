@@ -66,15 +66,10 @@ class LLMClient:
             warning=warning,
         )
 
-    async def complete(
-        self,
-        system: str,
-        user: str,
-        max_tokens: int = 1600,
-    ) -> str:
+    async def complete(self, system: str, user: str) -> str:
         if not self.enabled:
             return ""
-        payload = self._payload(system, user, max_tokens=max_tokens)
+        payload = self._payload(system, user)
         data = await self._post(payload)
         content = data["choices"][0]["message"].get("content")
         return (content or "").strip()
@@ -83,11 +78,10 @@ class LLMClient:
         self,
         system: str,
         user: str,
-        max_tokens: int = 1600,
     ) -> dict[str, Any] | None:
         if not self.enabled:
             return None
-        payload = self._payload(system, user, max_tokens=max_tokens)
+        payload = self._payload(system, user)
         payload["response_format"] = {"type": "json_object"}
         data = await self._post(payload)
         content = data["choices"][0]["message"].get("content") or ""
@@ -100,12 +94,7 @@ class LLMClient:
             raise LLMServiceError("模型返回JSON必须是对象")
         return result
 
-    def _payload(
-        self,
-        system: str,
-        user: str,
-        max_tokens: int = 1600,
-    ) -> dict[str, Any]:
+    def _payload(self, system: str, user: str) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": [
@@ -113,7 +102,7 @@ class LLMClient:
                 {"role": "user", "content": user},
             ],
             "temperature": 0.2,
-            "max_tokens": max_tokens,
+            "max_tokens": 1600,
             "stream": False,
         }
         if self.provider == "deepseek" and self.model.startswith("deepseek-v4"):

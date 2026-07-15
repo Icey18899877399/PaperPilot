@@ -13,8 +13,8 @@ export function MindMapView({ paper }: Props) {
   const [mindMap, setMindMap] = useState<MindMap | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fullScreen, setFullScreen] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const canvasRef = useRef<HTMLDivElement | null>(null);
   const markmapRef = useRef<Markmap | null>(null);
   const transformer = useMemo(() => new Transformer(), []);
 
@@ -67,38 +67,26 @@ export function MindMapView({ paper }: Props) {
     if (!markmapRef.current) {
       markmapRef.current = Markmap.create(svgRef.current, {
         autoFit: true,
-        duration: 260,
-        fitRatio: 0.95,
-        initialExpandLevel: 2,
-        maxInitialScale: 1.3,
-        maxWidth: 220,
-        nodeMinHeight: 28,
-        paddingX: 12,
-        spacingHorizontal: 70,
-        spacingVertical: 16,
-        toggleRecursively: true
+        duration: 320,
+        fitRatio: 0.9,
+        initialExpandLevel: 4,
+        maxInitialScale: 1.2,
+        maxWidth: 280,
+        nodeMinHeight: 24,
+        paddingX: 10,
+        spacingHorizontal: 90,
+        spacingVertical: 12,
+        toggleRecursively: false
       }, root);
     } else {
-      void markmapRef.current
-        .setData(root, { autoFit: true, initialExpandLevel: 2 })
-        .then(() => markmapRef.current?.fit());
+      void markmapRef.current.setData(root, { autoFit: true, initialExpandLevel: 4 });
     }
   }, [mindMap, transformer]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !mindMap) return;
-    let timer = window.setTimeout(() => void markmapRef.current?.fit(), 100);
-    const observer = new ResizeObserver(() => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => void markmapRef.current?.fit(), 90);
-    });
-    observer.observe(canvas);
-    return () => {
-      observer.disconnect();
-      window.clearTimeout(timer);
-    };
-  }, [mindMap]);
+    const timer = window.setTimeout(() => void markmapRef.current?.fit(), 120);
+    return () => window.clearTimeout(timer);
+  }, [fullScreen]);
 
   useEffect(() => () => markmapRef.current?.destroy(), []);
 
@@ -124,20 +112,30 @@ export function MindMapView({ paper }: Props) {
           <p>点击“生成思维导图”，由论文理解Agent整理全文知识结构。</p>
         </div>
       ) : (
-        <div className="mindmap-visual-shell">
+        <div className={`mindmap-visual-shell ${fullScreen ? "is-expanded" : ""}`}>
           <div className="mindmap-toolbar">
             <div>
               <strong>{mindMap.title}</strong>
-              <span>画布会自动适配窗口；点击节点圆点可展开或折叠，拖动可平移</span>
+              <span>点击节点圆点可展开/折叠，拖动画布可平移</span>
             </div>
             <div className="mindmap-actions">
-              <button type="button" title="放大思维导图" aria-label="放大思维导图" onClick={() => void markmapRef.current?.rescale(1.15)}>＋</button>
-              <button type="button" title="缩小思维导图" aria-label="缩小思维导图" onClick={() => void markmapRef.current?.rescale(0.87)}>－</button>
+              <button type="button" onClick={() => void markmapRef.current?.rescale(1.2)}>放大</button>
+              <button type="button" onClick={() => void markmapRef.current?.rescale(0.8)}>缩小</button>
+              <button type="button" onClick={() => void markmapRef.current?.fit()}>适应画布</button>
+              <button type="button" onClick={() => setFullScreen((value) => !value)}>
+                {fullScreen ? "退出全屏" : "全屏查看"}
+              </button>
             </div>
           </div>
-          <div className="mindmap-svg-wrap" ref={canvasRef}>
+          <div className="mindmap-svg-wrap">
             <svg ref={svgRef} aria-label={`${mindMap.center}思维导图`} />
           </div>
+          <div className="mindmap-summaries">
+            {mindMap.branches.map((branch) => (
+              <p key={branch.label}><strong>{branch.label}</strong><span>{branch.summary}</span></p>
+            ))}
+          </div>
+          <footer className="mindmap-trace">Trace ID：{mindMap.agent_trace_id}</footer>
         </div>
       )}
     </section>

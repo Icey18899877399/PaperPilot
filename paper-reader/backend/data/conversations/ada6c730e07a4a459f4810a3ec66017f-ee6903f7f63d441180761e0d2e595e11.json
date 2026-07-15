@@ -1,0 +1,106 @@
+{
+  "id": "ee6903f7f63d441180761e0d2e595e11",
+  "paper_id": "ada6c730e07a4a459f4810a3ec66017f",
+  "title": "测试?",
+  "messages": [
+    {
+      "id": "80d2e645924746ce982186a33c2e9406",
+      "role": "user",
+      "text": "测试?",
+      "citations": [],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-14T07:25:19.285039Z"
+    },
+    {
+      "id": "10f394504c124f25bdbe99ea5dfee649",
+      "role": "assistant",
+      "text": "当前论文证据不足，无法回答该问题。论文中未包含与您问题直接相关的信息。\n建议尝试以下方式：\n1. 换一种更具体的提问方式\n2. 查阅论文其他章节\n3. 确认问题涉及的概念是否在论文中出现",
+      "citations": [
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m1",
+          "page": 1,
+          "quote": "OpenEP: Open-Ended Future Event Prediction",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            200.0,
+            101.0,
+            795.0,
+            126.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m2",
+          "page": 1,
+          "quote": "Yong Guan Tsinghua University Beijing, China gy2022@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            129.0,
+            137.0,
+            333.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m3",
+          "page": 1,
+          "quote": "Hao Peng Tsinghua University Beijing, China peng-21@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            393.0,
+            137.0,
+            606.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m4",
+          "page": 1,
+          "quote": "Lei Hou Tsinghua University Beijing, China houlei@tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            281.0,
+            210.0,
+            447.0,
+            272.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m5",
+          "page": 1,
+          "quote": "Xiaozhi Wang Tsinghua University Beijing, China wangxz20@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            655.0,
+            137.0,
+            879.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m6",
+          "page": 1,
+          "quote": "Juanzi Li Tsinghua University Beijing, China lijuanzi@tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            545.0,
+            210.0,
+            720.0,
+            272.0
+          ]
+        }
+      ],
+      "videos": [],
+      "evidence_sufficient": false,
+      "created_at": "2026-07-14T07:25:19.285039Z"
+    }
+  ],
+  "created_at": "2026-07-14T07:25:12.624520Z",
+  "updated_at": "2026-07-14T07:25:19.285039Z"
+}

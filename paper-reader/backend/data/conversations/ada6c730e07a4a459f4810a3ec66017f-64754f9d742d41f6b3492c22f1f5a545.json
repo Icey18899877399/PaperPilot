@@ -1,0 +1,262 @@
+{
+  "id": "64754f9d742d41f6b3492c22f1f5a545",
+  "paper_id": "ada6c730e07a4a459f4810a3ec66017f",
+  "title": "第1页主要讲了什么？",
+  "messages": [
+    {
+      "id": "22f3412579c74a3aad97a2f1b01d52e4",
+      "role": "user",
+      "text": "第1页主要讲了什么？",
+      "citations": [],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-14T07:55:51.139673Z"
+    },
+    {
+      "id": "c678ec5cba404c8ca7c0503edea993fd",
+      "role": "assistant",
+      "text": "第1页是论文的首页，主要介绍了论文的标题、作者信息、摘要、CCS概念分类、引用格式以及引言部分。具体内容如下：\n\n- **标题与作者**：论文标题为《OpenEP: Open-Ended Future Event Prediction》，作者包括Yong Guan、Hao Peng、Lei Hou、Xiaozhi Wang和Juanzi Li，均来自清华大学。【第1页】\n- **摘要**：摘要指出，未来事件预测（FEP）是一项长期且关键的任务，但现有工作通常将其视为分类任务，将未来事件的结果限制在固定范围内（如是非题、候选集、分类体系）。为此，本文提出了**OpenEP**（开放式未来事件预测任务），能够生成灵活多样的预测，更贴合真实场景。主要体现在两个方面：预测问题多样化，涵盖事件发展的不同阶段和视角；结果灵活，不受范围或格式限制。为支持研究，作者构建了**OpenEPBench**数据集，从时间、地点、事件发展、事件结果、事件影响、事件响应等七个角度提出问题，并收集自由文本作为真实结果。此外，提出了**StkFEP**（利益相关者增强的未来事件预测框架），通过提取事件中的利益相关者来扩展问题，并收集历史相关事件以揭示潜在演化模式。实验结果表明，现有大语言模型在开放式设定下准确预测未来事件仍具挑战性。【第1页】\n- **CCS概念**：计算方法论 → 信息抽取。【第1页】\n- **引用格式**：给出了ACM标准引用格式，并注明论文共13页。【第1页】\n- **图1**：展示了未来事件预测的示例，例如给定预测问题“中国下一个将与哪个国家签订免签协议？”，模型需要收集历史事件（如“波兰总统宣布即将访华”）来预测未来结果（如“波兰”）。【第1页】\n- **引言**：引言部分进一步阐述了未来事件预测的重要性（如法律、金融、医疗领域的风险识别与决策支持），回顾了从统计机器学习到深度学习再到LLM的发展历程，并指出现有工作将预测视为分类任务的局限性（结果格式统一、缺乏丰富语义和细节），而真实世界中的预测结果通常更长、语义更完整、细节更丰富。【第1页】\n\n此外，页面底部包含会议版权信息（Conference'17, July 2017, Washington, DC, USA）和ACM出版信息。【第1页】",
+      "citations": [
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m1",
+          "page": 1,
+          "quote": "OpenEP: Open-Ended Future Event Prediction",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            200.0,
+            101.0,
+            795.0,
+            126.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m2",
+          "page": 1,
+          "quote": "Yong Guan Tsinghua University Beijing, China gy2022@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            129.0,
+            137.0,
+            333.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m3",
+          "page": 1,
+          "quote": "Hao Peng Tsinghua University Beijing, China peng-21@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            393.0,
+            137.0,
+            606.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m4",
+          "page": 1,
+          "quote": "Lei Hou Tsinghua University Beijing, China houlei@tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            281.0,
+            210.0,
+            447.0,
+            272.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m5",
+          "page": 1,
+          "quote": "Xiaozhi Wang Tsinghua University Beijing, China wangxz20@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            655.0,
+            137.0,
+            879.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m6",
+          "page": 1,
+          "quote": "Juanzi Li Tsinghua University Beijing, China lijuanzi@tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            545.0,
+            210.0,
+            720.0,
+            272.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m7",
+          "page": 1,
+          "quote": "Abstract",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            281.0,
+            158.0,
+            296.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m8",
+          "page": 1,
+          "quote": "Future event prediction (FEP) is a long-standing and crucial task in the world, as understanding the evolution of events enables early risk identification, informed decision-making",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            81.0,
+            299.0,
+            483.0,
+            732.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m9",
+          "page": 1,
+          "quote": "CCS Concepts",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            742.0,
+            202.0,
+            757.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m10",
+          "page": 1,
+          "quote": "• Computing methodologies → Information extraction.",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            761.0,
+            454.0,
+            775.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m11",
+          "page": 1,
+          "quote": "ACM Reference Format:",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            781.0,
+            230.0,
+            792.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m12",
+          "page": 1,
+          "quote": "Yong Guan, Hao Peng, Xiaozhi Wang, Lei Hou, and Juanzi Li. 2024. OpenEP: Open-Ended Future Event Prediction. In . ACM, New York, NY, USA, 13 pages. https://doi.org/10.1145/nnnn.nnn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            791.0,
+            483.0,
+            833.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m13",
+          "page": 1,
+          "quote": "[图片] Figure 1: Example of Future Event Prediction.",
+          "kind": "image",
+          "resource_url": "/media/assets/ada6c730e07a4a459f4810a3ec66017f/ada6c730e07a4a459f4810a3ec66017f-2408.06578v2/auto/images/024a5a0bbf2babbb9010c1bed7230d6ddb22844ea969699c083bec49895cb0c0.jpg",
+          "bbox": [
+            517.0,
+            281.0,
+            911.0,
+            446.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m14",
+          "page": 1,
+          "quote": "1 Introduction",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            516.0,
+            503.0,
+            650.0,
+            517.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m15",
+          "page": 1,
+          "quote": "Future event prediction (FEP) aims to predict the potential future outcomes based on the historical events and the precursors [33]. In Figure 1, given the predictive question “Whic",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            513.0,
+            522.0,
+            915.0,
+            703.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m16",
+          "page": 1,
+          "quote": "Early research mainly utilizes statistical machine learning methods, fitting predefined statistical models with historical data for prediction [8, 12]. These methods often required",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            513.0,
+            702.0,
+            916.0,
+            897.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m17",
+          "page": 1,
+          "quote": "ar201[2 2:04",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            22.0,
+            261.0,
+            58.0,
+            705.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m18",
+          "page": 1,
+          "quote": "Conference'17, July 2017, Washington, DC, USA © 2024 Copyright held by the owner/author(s). Publication rights licensed to ACM. ACM ISBN 978-x-xxxx-xxxx-x/YY/MM https://doi.org/10.",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            81.0,
+            852.0,
+            473.0,
+            896.0
+          ]
+        }
+      ],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-14T07:55:51.139673Z"
+    }
+  ],
+  "created_at": "2026-07-14T07:55:26.315819Z",
+  "updated_at": "2026-07-14T07:55:51.139673Z"
+}
