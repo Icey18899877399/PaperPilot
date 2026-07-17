@@ -53,10 +53,13 @@ class LearningService:
         plan = await self._plan_query(request.query, context)
         interpreted_query = str(plan.get("search_query") or request.query).strip()
         concepts = self._strings(plan.get("concepts"))[:8]
-        requested = set(request.resource_types)
+        if not concepts:
+            concepts = self._concepts_from_context(interpreted_query, context)[:8]
+        video_query = self._video_search_query(interpreted_query, concepts, context)
+        requested = self._normalize_requested_types(set(request.resource_types), request.query)
 
         local_resources = self._local_resources(
-            interpreted_query,
+            video_query,
             context,
             requested,
         )
@@ -64,7 +67,8 @@ class LearningService:
             self._openalex(interpreted_query, requested),
             self._crossref(interpreted_query, requested),
             self._wikipedia(interpreted_query, requested),
-            self._youtube(interpreted_query, requested),
+            self._bilibili(video_query, concepts, requested),
+            self._video_web(video_query, concepts, requested),
         ]
         provider_results = await asyncio.gather(*tasks)
         resources = list(local_resources)
@@ -128,7 +132,7 @@ class LearningService:
 
     async def _plan_query(self, query: str, context: str) -> dict[str, Any]:
         if not self.llm.enabled:
-            return {"search_query": query, "concepts": self._terms(query)[:6]}
+            return self._fallback_query_plan(query, context)
         try:
             result = await self.llm.complete_json(
                 "你是学术学习资源检索规划Agent。只输出JSON，不得编造资源或链接。",
@@ -142,7 +146,43 @@ class LearningService:
             )
             return result or {"search_query": query}
         except LLMServiceError:
-            return {"search_query": query, "concepts": self._terms(query)[:6]}
+            return self._fallback_query_plan(query, context)
+
+    def _fallback_query_plan(self, query: str, context: str) -> dict[str, Any]:
+        query_terms = self._terms(query)
+        if context and self._is_generic_learning_query(query):
+            context_terms = self._ranked_context_terms(context)
+            if context_terms:
+                return {
+                    "search_query": " ".join(context_terms[:6]),
+                    "concepts": context_terms[:8],
+                }
+        return {"search_query": query, "concepts": query_terms[:6]}
+
+    def _concepts_from_context(self, query: str, context: str) -> list[str]:
+        ranked = self._ranked_context_terms(context) if context else []
+        return self._dedupe_terms([*ranked, *self._terms(query)])[:12]
+
+    def _video_search_query(self, query: str, concepts: list[str], context: str) -> str:
+        ranked_context = self._ranked_context_terms(context) if context else []
+        terms = self._dedupe_terms([*concepts, *ranked_context, *self._terms(query)])
+        focused = " ".join(terms[:5]).strip() or query.strip()
+        if not focused:
+            return "论文方法 教程 讲解"
+        if re.search(r"视频|课程|教程|讲解|精读|lecture|tutorial|course", focused, re.I):
+            return focused[:120]
+        return f"{focused} 教程 讲解 论文精读"[:120]
+
+    def _english_video_query(self, query: str, concepts: list[str]) -> str:
+        english_terms = [
+            term
+            for term in self._dedupe_terms([*concepts, *self._terms(query)])
+            if re.search(r"[A-Za-z]", term)
+        ]
+        focused = " ".join(english_terms[:6]).strip() or query.strip()
+        if re.search(r"lecture|tutorial|course|explained|seminar", focused, re.I):
+            return focused[:140]
+        return f"{focused} lecture tutorial course"[:140]
 
     async def _explain(
         self,
@@ -187,11 +227,11 @@ class LearningService:
         context: str,
         requested: set[LearningResourceType],
     ) -> list[LearningResource]:
-        if requested and not ({LearningResourceType.video, LearningResourceType.local} & requested):
+        if requested and not ({LearningResourceType.video, LearningResourceType.course} & requested):
             return []
         return [
             LearningResource(
-                id=f"local-video:{video.id}",
+                id=f"bilibili-curated:{video.id}",
                 resource_type=LearningResourceType.video,
                 title=video.title,
                 description=video.description,
@@ -199,11 +239,26 @@ class LearningService:
                 url=video.file_url,
                 thumbnail_url=video.cover_url,
                 tags=[*video.knowledge_points, *video.keywords, *video.tags][:10],
-                relevance_reason=video.recommendation_reason or "本地资源与当前问题相关",
-                local=True,
+                relevance_reason=video.recommendation_reason or "已维护的B站视频与当前问题相关",
             )
             for video in self.videos.recommend(query, context=context, limit=3)
         ]
+
+    @staticmethod
+    def _normalize_requested_types(
+        requested: set[LearningResourceType],
+        query: str,
+    ) -> set[LearningResourceType]:
+        normalized = set(requested)
+        if LearningResourceType.local in normalized:
+            normalized.update({LearningResourceType.video, LearningResourceType.course})
+        has_video_intent = bool(re.search(r"b站|bilibili|视频|课程|教程", query, re.I))
+        has_paper_intent = bool(re.search(r"论文|综述|近期工作|相关工作|survey|paper|related work", query, re.I))
+        if has_paper_intent and not has_video_intent:
+            normalized = {LearningResourceType.paper}
+        elif has_video_intent:
+            normalized.update({LearningResourceType.video, LearningResourceType.course})
+        return normalized
 
     async def _openalex(
         self,
@@ -218,9 +273,17 @@ class LearningService:
         try:
             payload = await self._get_json("https://api.openalex.org/works", params)
             items = [self._openalex_item(item) for item in payload.get("results", [])]
-            return [item for item in items if item], LearningProviderStatus(provider="OpenAlex")
+            valid_items = [item for item in items if item]
+            if valid_items:
+                return valid_items, LearningProviderStatus(provider="OpenAlex")
+            return [self._provider_search_resource("OpenAlex", query)], LearningProviderStatus(
+                provider="OpenAlex",
+                message="未返回直接论文，已提供搜索入口",
+            )
         except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
-            return [], self._failed_status("OpenAlex", exc)
+            status = self._failed_status("OpenAlex", exc)
+            status.message = f"{status.message}；已提供搜索入口"
+            return [self._provider_search_resource("OpenAlex", query)], status
 
     async def _crossref(
         self,
@@ -236,46 +299,72 @@ class LearningService:
             payload = await self._get_json("https://api.crossref.org/works", params)
             raw_items = payload.get("message", {}).get("items", [])
             items = [self._crossref_item(item) for item in raw_items]
-            return [item for item in items if item], LearningProviderStatus(provider="Crossref")
+            valid_items = [item for item in items if item]
+            if valid_items:
+                return valid_items, LearningProviderStatus(provider="Crossref")
+            return [self._provider_search_resource("Crossref", query)], LearningProviderStatus(
+                provider="Crossref",
+                message="未返回直接论文，已提供搜索入口",
+            )
         except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
-            return [], self._failed_status("Crossref", exc)
+            status = self._failed_status("Crossref", exc)
+            status.message = f"{status.message}；已提供搜索入口"
+            return [self._provider_search_resource("Crossref", query)], status
 
-    async def _youtube(
+    async def _bilibili(
         self,
         query: str,
+        concepts: list[str],
         requested: set[LearningResourceType],
     ) -> tuple[list[LearningResource], LearningProviderStatus]:
         if requested and not ({LearningResourceType.video, LearningResourceType.course} & requested):
-            return [], LearningProviderStatus(provider="YouTube", enabled=False, message="未选择视频类型")
-        if not self.settings.youtube_api_key:
-            resource = LearningResource(
-                id=f"youtube-search:{self._digest(query)}",
-                resource_type=LearningResourceType.video,
-                title=f"在 YouTube 中继续检索：{query}",
-                description="未配置 YouTube Data API Key，当前提供可追溯的站内搜索入口。",
-                source="YouTube",
-                url=f"https://www.youtube.com/results?search_query={quote_plus(query)}",
-                relevance_reason="视频检索入口与当前拓展学习主题一致",
-            )
-            return [resource], LearningProviderStatus(
-                provider="YouTube",
-                enabled=False,
-                success=True,
-                message="未配置API Key，已提供搜索入口",
-            )
-        params = {
-            "part": "snippet",
-            "q": query,
-            "type": "video",
-            "maxResults": 6,
-            "key": self.settings.youtube_api_key,
-        }
+            return [], LearningProviderStatus(provider="B站", enabled=False, message="未选择视频类型")
         try:
-            payload = await self._get_json("https://www.googleapis.com/youtube/v3/search", params)
-            items = [self._youtube_item(item) for item in payload.get("items", [])]
-            return [item for item in items if item], LearningProviderStatus(provider="YouTube")
+            videos = await self.videos.search_public(
+                query,
+                limit=8,
+                timeout_seconds=self.settings.learning_search_timeout_seconds,
+                transport=self.transport,
+            )
         except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
-            return [], self._failed_status("YouTube", exc)
+            resources = self._bilibili_search_fallback(query, concepts)
+            status = self._failed_status("B站", exc)
+            status.message = "B站公开视频搜索暂不可用，已提供站内搜索入口"
+            return resources, status
+
+        videos = self._filter_bilibili_videos(videos, query, concepts)
+        if not videos:
+            return self._bilibili_search_fallback(query, concepts), LearningProviderStatus(
+                provider="B站",
+                message="未返回高相关具体视频，已提供站内搜索入口",
+            )
+        return [
+            LearningResource(
+                id=video.id,
+                resource_type=LearningResourceType.video,
+                title=video.title,
+                description=video.description,
+                source=video.source,
+                url=video.file_url,
+                thumbnail_url=video.cover_url,
+                tags=[*video.knowledge_points, *video.keywords, *video.tags][:10],
+                relevance_reason="根据论文内容和问题从B站公开视频搜索中匹配",
+            )
+            for video in videos
+        ], LearningProviderStatus(provider="B站", message="已搜索B站公开视频")
+
+    async def _video_web(
+        self,
+        query: str,
+        concepts: list[str],
+        requested: set[LearningResourceType],
+    ) -> tuple[list[LearningResource], LearningProviderStatus]:
+        if requested and not ({LearningResourceType.video, LearningResourceType.course} & requested):
+            return [], LearningProviderStatus(provider="公开视频", enabled=False, message="未选择视频类型")
+        return self._external_video_resources(query, concepts), LearningProviderStatus(
+            provider="公开视频",
+            message="已提供其他公开视频和课程搜索入口",
+        )
 
     async def _wikipedia(
         self,
@@ -387,25 +476,6 @@ class LearningService:
             relevance_reason="出版信息与检索内容匹配，可用于核对DOI",
         )
 
-    def _youtube_item(self, item: dict[str, Any]) -> LearningResource | None:
-        video_id = (item.get("id") or {}).get("videoId")
-        snippet = item.get("snippet") or {}
-        title = str(snippet.get("title") or "").strip()
-        if not video_id or not title:
-            return None
-        thumbnails = snippet.get("thumbnails") or {}
-        thumbnail = (thumbnails.get("medium") or thumbnails.get("default") or {}).get("url")
-        return LearningResource(
-            id=f"youtube:{video_id}",
-            resource_type=LearningResourceType.video,
-            title=self._strip_html(title),
-            description=self._strip_html(str(snippet.get("description") or "")),
-            source=str(snippet.get("channelTitle") or "YouTube"),
-            url=f"https://www.youtube.com/watch?v={video_id}",
-            thumbnail_url=thumbnail,
-            relevance_reason="视频标题或简介与当前检索词匹配",
-        )
-
     def _wikipedia_item(
         self,
         item: dict[str, Any],
@@ -443,22 +513,259 @@ class LearningService:
             relevance_reason="站内搜索词来自当前论文和问题",
         )
 
+    def _provider_search_resource(self, provider: str, query: str) -> LearningResource:
+        if provider == "OpenAlex":
+            url = f"https://openalex.org/works?search={quote_plus(query)}"
+        elif provider == "Crossref":
+            url = f"https://search.crossref.org/?q={quote_plus(query)}"
+        else:
+            url = f"https://www.google.com/search?q={quote_plus(query)}"
+        return LearningResource(
+            id=f"{provider.lower()}-search:{self._digest(query)}",
+            resource_type=LearningResourceType.paper,
+            title=f"在 {provider} 中继续检索：{query}",
+            description="外部论文接口暂未返回可直接展示的记录，可打开来源站点继续检索相关论文、综述和近期工作。",
+            source=provider,
+            url=url,
+            relevance_reason="搜索词来自当前论文内容和用户问题",
+        )
+
+    def _external_video_resources(
+        self,
+        query: str,
+        concepts: list[str],
+    ) -> list[LearningResource]:
+        display_query = re.sub(r"\s+", " ", query).strip()[:90] or "论文方法"
+        english_query = self._english_video_query(query, concepts)
+        course_query = " ".join(
+            self._dedupe_terms(
+                [term for term in [*concepts, *self._terms(query)] if re.search(r"[A-Za-z]", term)]
+            )[:6]
+        ) or display_query
+        shared_tags = self._dedupe_terms([*concepts[:6], "视频", "课程"])
+        return [
+            LearningResource(
+                id=f"youtube-search:{self._digest(english_query)}",
+                resource_type=LearningResourceType.video,
+                title=f"在 YouTube 搜索：{display_query}",
+                description="打开YouTube检索与论文核心概念相关的lecture、tutorial、paper reading或seminar视频。",
+                source="YouTube",
+                url=f"https://www.youtube.com/results?search_query={quote_plus(english_query)}",
+                tags=shared_tags,
+                relevance_reason="根据论文片段提炼的关键词生成公开视频检索入口",
+            ),
+            LearningResource(
+                id=f"mit-ocw-search:{self._digest(course_query)}",
+                resource_type=LearningResourceType.course,
+                title=f"在 MIT OpenCourseWare 搜索：{course_query[:90]}",
+                description="适合查找系统课程、课堂讲义和公开视频课程，用来补齐论文涉及的基础知识。",
+                source="MIT OpenCourseWare",
+                url=f"https://ocw.mit.edu/search/?q={quote_plus(course_query)}",
+                tags=shared_tags,
+                relevance_reason="课程站点检索词来自论文核心概念",
+            ),
+            LearningResource(
+                id=f"coursera-search:{self._digest(course_query)}",
+                resource_type=LearningResourceType.course,
+                title=f"在 Coursera 搜索：{course_query[:90]}",
+                description="可继续筛选机器学习、NLP、数据科学等方向的公开视频课程和专项课程。",
+                source="Coursera",
+                url=f"https://www.coursera.org/search?query={quote_plus(course_query)}",
+                tags=shared_tags,
+                relevance_reason="课程搜索词根据论文主题自动生成",
+            ),
+            LearningResource(
+                id=f"stanford-online-search:{self._digest(course_query)}",
+                resource_type=LearningResourceType.course,
+                title=f"在 Stanford Online 搜索：{course_query[:90]}",
+                description="用于补充高校公开课、短课程和专题学习资源，适合先建立背景再读论文细节。",
+                source="Stanford Online",
+                url=f"https://online.stanford.edu/search-catalog?type=All&keywords={quote_plus(course_query)}",
+                tags=shared_tags,
+                relevance_reason="外部课程入口围绕论文关键词生成",
+            ),
+        ]
+
+    def _filter_bilibili_videos(
+        self,
+        videos: list[Any],
+        query: str,
+        concepts: list[str],
+    ) -> list[Any]:
+        terms = self._relevance_terms(query, concepts)
+        if not terms:
+            return videos[:6]
+        scored: list[tuple[int, Any]] = []
+        for video in videos:
+            title = str(getattr(video, "title", "") or "").lower()
+            haystack = " ".join(
+                [
+                    title,
+                    str(getattr(video, "description", "") or "").lower(),
+                    " ".join(str(value).lower() for value in getattr(video, "tags", []) or []),
+                ]
+            )
+            score = 0
+            for term in terms:
+                if term in title:
+                    score += 3
+                elif term in haystack:
+                    score += 1
+            if score > 0:
+                scored.append((score, video))
+        scored.sort(key=lambda item: (-item[0], str(getattr(item[1], "title", "")).lower()))
+        return [video for _, video in scored[:8]]
+
+    def _bilibili_search_fallback(
+        self,
+        query: str,
+        concepts: list[str],
+    ) -> list[LearningResource]:
+        variants = self._expanded_bilibili_queries(query, concepts)
+        return [
+            LearningResource(
+                id=f"bilibili-search:{self._digest(value)}",
+                resource_type=LearningResourceType.video,
+                title=f"在 B 站搜索：{value}",
+                description="打开B站搜索结果后可按课程讲解、论文精读、可视化推导继续筛选。",
+                source="B站",
+                url=f"https://search.bilibili.com/all?keyword={quote_plus(value)}",
+                tags=["B站", "视频", "课程"],
+                relevance_reason="B站搜索词来自当前论文和拓展学习问题",
+            )
+            for value in variants[:3]
+        ]
+
+    def _expanded_bilibili_queries(self, query: str, concepts: list[str]) -> list[str]:
+        terms = self._relevance_terms(query, concepts)
+        translated = self._translated_learning_terms(terms)
+        variants = [query]
+        if translated:
+            variants.append(f"{' '.join(translated[:6])} 教程 讲解")
+        if terms:
+            variants.append(f"{' '.join(terms[:5])} tutorial lecture")
+        variants.append(f"{query} 论文精读")
+        return self._dedupe_terms(variants)
+
+    @staticmethod
+    def _translated_learning_terms(terms: list[str]) -> list[str]:
+        translations = {
+            "forecast": "预测",
+            "forecasting": "预测",
+            "event": "事件",
+            "events": "事件",
+            "retrieval": "检索",
+            "augmented": "增强",
+            "generation": "生成",
+            "contrastive": "对比",
+            "decoding": "解码",
+            "transformer": "Transformer",
+            "attention": "注意力",
+            "language": "语言模型",
+            "graph": "图",
+            "knowledge": "知识图谱",
+            "neural": "神经网络",
+            "network": "网络",
+            "classification": "分类",
+            "detection": "检测",
+            "segmentation": "分割",
+            "diffusion": "扩散",
+            "reinforcement": "强化学习",
+            "series": "时间序列",
+            "prediction": "预测",
+        }
+        values: list[str] = []
+        lowered = [term.lower() for term in terms]
+        if "time" in lowered and "series" in lowered:
+            values.append("时间序列")
+        for term in lowered:
+            if term in translations:
+                values.append(translations[term])
+        return list(dict.fromkeys(values))
+
     def _apply_relevance(
         self,
         resources: list[LearningResource],
         concepts: list[str],
         query: str,
     ) -> list[LearningResource]:
-        terms = {value.lower() for value in [*concepts, *self._terms(query)] if len(value) > 1}
+        terms = set(self._relevance_terms(query, concepts))
         scored: list[tuple[int, LearningResource]] = []
         for resource in resources:
             haystack = f"{resource.title} {resource.description} {' '.join(resource.tags)}".lower()
             score = sum(2 for term in terms if term in haystack)
             if resource.local:
                 score += 1
+            if resource.id.startswith("bilibili:"):
+                score += 4
             scored.append((score, resource))
         scored.sort(key=lambda value: (-value[0], value[1].title.lower()))
         return [resource for _, resource in scored[:24]]
+
+    @staticmethod
+    def _relevance_terms(query: str, concepts: list[str]) -> list[str]:
+        stopwords = {
+            "abstract",
+            "paper",
+            "method",
+            "methods",
+            "model",
+            "models",
+            "data",
+            "task",
+            "tasks",
+            "result",
+            "results",
+            "using",
+            "based",
+            "from",
+            "with",
+            "without",
+            "into",
+            "onto",
+            "over",
+            "under",
+            "this",
+            "that",
+            "these",
+            "those",
+            "their",
+            "there",
+            "where",
+            "which",
+            "whose",
+            "when",
+            "then",
+            "than",
+            "also",
+            "have",
+            "has",
+            "had",
+            "been",
+            "were",
+            "will",
+            "would",
+            "could",
+            "should",
+            "教程",
+            "讲解",
+            "视频",
+            "课程",
+            "论文",
+            "精读",
+            "相关",
+            "推荐",
+            "学习",
+        }
+        terms: list[str] = []
+        for term in LearningService._dedupe_terms([*concepts, *LearningService._terms(query)]):
+            normalized = term.strip("-_").lower()
+            if not normalized or normalized in stopwords:
+                continue
+            if re.search(r"[A-Za-z]", normalized) and len(normalized) < 4:
+                continue
+            terms.append(normalized)
+        return terms[:12]
 
     def _dedupe(self, resources: list[LearningResource]) -> list[LearningResource]:
         seen: set[str] = set()
@@ -488,7 +795,7 @@ class LearningService:
     ) -> str:
         prefix = f"已结合《{paper.filename}》" if paper else "已根据当前问题"
         if resources:
-            return f"{prefix}整理出{len(resources)}项可追溯的拓展资料。建议先阅读高相关论文，再用视频或本地资源巩固概念。"
+            return f"{prefix}整理出{len(resources)}项可追溯的拓展资料。建议先阅读高相关论文，再用公开视频或课程巩固概念。"
         return f"{prefix}完成检索，但外部来源暂未返回可用结果；可以调整关键词后重试。"
 
     @staticmethod
@@ -527,6 +834,94 @@ class LearningService:
     @staticmethod
     def _terms(value: str) -> list[str]:
         return list(dict.fromkeys(re.findall(r"[A-Za-z][A-Za-z0-9_-]{1,}|[\u4e00-\u9fff]{2,}", value)))
+
+    @staticmethod
+    def _is_generic_learning_query(value: str) -> bool:
+        return bool(
+            re.search(
+                r"这篇论文|当前论文|相关|综述|近期工作|前置知识|学习视频|视频|课程|教程|related|survey|recent work",
+                value,
+                re.I,
+            )
+        )
+
+    @staticmethod
+    def _ranked_context_terms(value: str) -> list[str]:
+        stopwords = {
+            "abstract",
+            "introduction",
+            "conclusion",
+            "references",
+            "proceedings",
+            "association",
+            "copyright",
+            "licensed",
+            "paper",
+            "method",
+            "results",
+            "using",
+            "based",
+            "model",
+            "models",
+            "data",
+            "task",
+            "tasks",
+            "language",
+            "learning",
+            "approach",
+            "from",
+            "with",
+            "without",
+            "into",
+            "onto",
+            "over",
+            "under",
+            "this",
+            "that",
+            "these",
+            "those",
+            "their",
+            "there",
+            "where",
+            "which",
+            "whose",
+            "when",
+            "then",
+            "than",
+            "also",
+            "have",
+            "has",
+            "had",
+            "been",
+            "were",
+            "will",
+            "would",
+            "could",
+            "should",
+        }
+        counts: dict[str, int] = {}
+        for term in re.findall(r"[A-Za-z][A-Za-z0-9_-]{2,}", value):
+            normalized = term.strip("-_").lower()
+            if len(normalized) < 4 or normalized in stopwords:
+                continue
+            counts[normalized] = counts.get(normalized, 0) + 1
+        ranked = sorted(
+            counts,
+            key=lambda item: (-counts[item], -len(item), item),
+        )
+        return ranked[:12]
+
+    @staticmethod
+    def _dedupe_terms(values: list[str]) -> list[str]:
+        result: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            clean = value.strip()
+            key = clean.lower()
+            if clean and key not in seen:
+                seen.add(key)
+                result.append(clean)
+        return result
 
     @staticmethod
     def _digest(value: str) -> str:

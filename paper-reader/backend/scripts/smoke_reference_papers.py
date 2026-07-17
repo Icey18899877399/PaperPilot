@@ -29,9 +29,10 @@ def main() -> None:
                     {
                         "id": "smoke-transformer",
                         "title": "Transformer learning video",
-                        "description": "Smoke-test metadata",
+                        "description": "Smoke-test Bilibili metadata",
                         "keywords": ["transformer", "attention"],
-                        "file_url": "/media/videos/transformer.mp4",
+                        "source": "B站搜索",
+                        "file_url": "https://search.bilibili.com/all?keyword=transformer+attention",
                     }
                 ]
             ),

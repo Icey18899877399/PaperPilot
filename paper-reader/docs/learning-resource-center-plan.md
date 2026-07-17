@@ -2,12 +2,12 @@
 
 ## 1. Product decision
 
-The current `视频资源` module should evolve into a source-grounded `学习资源` center. It should keep local MP4 management, but recommendations must no longer be limited to locally maintained video metadata. For a selected paper or a user question, the center should be able to find and explain:
+The current `视频资源` module should evolve into a source-grounded `学习资源` center. It should keep curated Bilibili links/search entries, but recommendations must no longer be limited to locally maintained metadata. For a selected paper or a user question, the center should be able to find and explain:
 
 - related papers and surveys;
 - high-quality videos and courses;
 - official documentation, tutorials, and other text resources;
-- local files that the user has already collected.
+- curated links that the user has already collected.
 
 The navigation label should change only after the generalized resource API and UI are available. Until then, keeping `视频资源` avoids presenting planned scope as a shipped capability.
 
@@ -34,8 +34,8 @@ Reader / chat / resource-center query
        +--------+---------+----------------+
        |                  |                |
        v                  v                v
- Local resource      Paper providers   Media/text providers
- repository          OpenAlex          YouTube
+ Curated resource    Paper providers   Media/text providers
+ repository          OpenAlex          Bilibili search
                      Crossref          curated web adapters
                      Semantic Scholar
        |                  |                |
@@ -67,7 +67,7 @@ Add a project-owned `db` service based on `pgvector/pgvector:pg16`:
 - backend waits for the database health check;
 - Alembic performs schema migrations.
 
-Large PDFs, MP4 files, thumbnails, and generated assets should remain in the mounted data directory or future object storage. PostgreSQL stores metadata, extracted text, hashes, links, job state, and embeddings; it should not become a binary-file bucket.
+Large PDFs, thumbnails, and generated assets should remain in the mounted data directory or future object storage. PostgreSQL stores metadata, extracted text, hashes, links, job state, and embeddings; it should not become a binary-file bucket.
 
 Introduce a repository interface so the application can migrate from JSON without rewriting agents and routes:
 
@@ -86,10 +86,10 @@ During migration, an idempotent command imports `papers.json`, derived records, 
 - `id` UUID primary key
 - `resource_type`: `paper`, `video`, `course`, `web`, `documentation`, `local_file`
 - `title`, `abstract_or_summary`, `language`
-- `provider`: `local`, `openalex`, `crossref`, `semantic_scholar`, `youtube`, etc.
+- `provider`: `curated`, `openalex`, `crossref`, `semantic_scholar`, `bilibili`, etc.
 - `provider_id`, `canonical_url`, `doi`
 - `authors` JSONB, `published_at`
-- `thumbnail_url`, `local_path`, `mime_type`
+- `thumbnail_url`, `source_url`, `mime_type`
 - `content_text` or searchable transcript/abstract
 - `metadata` JSONB for provider-specific fields
 - `content_hash`, `status`, `created_at`, `updated_at`
@@ -131,8 +131,8 @@ The initial release can run PostgreSQL full-text search before embeddings are re
 - OpenAlex: primary discovery source for papers, authors, concepts, and related works.
 - Crossref: DOI and publication metadata verification/supplement.
 - Semantic Scholar: optional citation/relevance enrichment when an API key is configured.
-- YouTube Data API: optional video discovery; API key, quota, and caching are mandatory.
-- Local resources: always available and ranked alongside external results.
+- Bilibili search: no API key required; provide traceable search URLs and curated links.
+- Curated resources: always available and ranked alongside external results.
 - Web text: start with explicitly configured and attributable provider adapters. Avoid unrestricted scraping as the first implementation.
 
 All provider credentials remain backend-only. The frontend receives provider availability and rate-limit status, never secrets.
@@ -157,11 +157,11 @@ When the generalized API is ready, rename the navigation entry and component to 
 The page should prioritize discovery over manual metadata entry:
 
 - one paper-aware search box with example queries;
-- tabs or filters for `全部`, `论文`, `文字/文档`, `视频/课程`, and `本地收藏`;
+- tabs or filters for `全部`, `论文`, `文字/文档`, `视频/课程`, and `收藏链接`;
 - result cards with title, type, source, date, language, and `为什么推荐`;
 - visible source link and paper evidence/page chips;
 - save, dismiss, and feedback actions;
-- a secondary `添加本地资源` dialog instead of a full-page upload form;
+- a secondary `添加收藏链接` dialog instead of a full-page upload form;
 - provider status and an explicit fallback message when external search is unavailable.
 
 Chat recommendations should consume the same resource service so the chat panel and resource center never use different ranking rules.
@@ -176,7 +176,7 @@ Chat recommendations should consume the same resource service so the chat panel 
 - Import existing JSON papers and video catalogue.
 - Preserve current APIs through compatibility adapters.
 
-Acceptance: existing upload, reading, chat, translation, mind map, and local-video flows pass against PostgreSQL; migration is repeatable and reports conflicts.
+Acceptance: existing upload, reading, chat, translation, mind map, and Bilibili video flows pass against PostgreSQL; migration is repeatable and reports conflicts.
 
 ### P1 - Generalized local resource center
 
@@ -184,7 +184,7 @@ Acceptance: existing upload, reading, chat, translation, mind map, and local-vid
 - Add PostgreSQL full-text search, filters, pagination, deduplication, and job tracking.
 - Move local resource creation into a dialog and ship the generalized result-card UI.
 
-Acceptance: users can add and retrieve local papers, documents, links, and videos from one interface; no external provider is required.
+Acceptance: users can add and retrieve papers, documents, links, and Bilibili video entries from one interface; no external provider credential is required.
 
 ### P2 - Paper discovery and AI explanation
 
@@ -196,7 +196,7 @@ Acceptance: a paper-aware query returns deduplicated related papers with working
 
 ### P3 - Video, course, and text discovery
 
-- Add YouTube and configured text/documentation providers.
+- Add Bilibili search shortcuts and configured text/documentation providers.
 - Add transcripts/snippets where licensing and provider terms permit.
 - Enable vector embeddings and hybrid reranking.
 - Add cache expiry, quotas, retries, and provider observability.
@@ -212,4 +212,3 @@ Acceptance: mixed resource types appear in one ranked result set, can be filtere
 ## 11. Recommended next implementation slice
 
 Start with P0 only. It creates the stable storage boundary required by every later feature and avoids coupling external API work to the current JSON catalogue. The first pull request should contain Compose/database migrations, repositories, and JSON import tests, but no UI rename and no external provider integration.
-

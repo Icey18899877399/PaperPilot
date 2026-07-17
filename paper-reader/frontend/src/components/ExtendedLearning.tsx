@@ -22,10 +22,10 @@ interface Props {
 type ResultFilter = "all" | LearningResourceType;
 type SearchScope = "all" | "paper" | "article" | "video";
 
-const examples = [
-  "理解论文核心方法需要哪些前置知识？",
-  "查找与这篇论文相关的综述和近期工作",
-  "查找适合复习关键概念的视频或课程"
+const examples: Array<{ text: string; scope?: SearchScope }> = [
+  { text: "理解论文核心方法需要哪些前置知识？" },
+  { text: "查找与这篇论文相关的综述和近期工作", scope: "paper" },
+  { text: "在B站查找适合复习关键概念的视频或课程", scope: "video" }
 ];
 
 const typeLabels: Record<LearningResourceType, string> = {
@@ -34,7 +34,7 @@ const typeLabels: Record<LearningResourceType, string> = {
   article: "文字资料",
   course: "课程",
   documentation: "文档",
-  local: "本地资源"
+  local: "自建资源"
 };
 
 const searchScopes: Array<{ value: SearchScope; label: string }> = [
@@ -48,7 +48,7 @@ const scopeTypes: Record<SearchScope, LearningResourceType[]> = {
   all: [],
   paper: ["paper"],
   article: ["article", "documentation"],
-  video: ["video", "course", "local"]
+  video: ["video", "course"]
 };
 
 export function ExtendedLearning({
@@ -79,6 +79,14 @@ export function ExtendedLearning({
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
     if (!query.trim() || searching) return;
+    const hasVideoIntent = /b站|bilibili|视频|课程|教程/i.test(query);
+    const hasPaperIntent = /论文|综述|近期工作|相关工作|survey|paper|related work/i.test(query);
+    const effectiveScope = hasVideoIntent
+      ? "video"
+      : hasPaperIntent && searchScope === "video"
+        ? "paper"
+        : searchScope;
+    if (effectiveScope !== searchScope) setSearchScope(effectiveScope);
     setSearching(true);
     setError("");
     setFilter("all");
@@ -87,7 +95,7 @@ export function ExtendedLearning({
         await api.searchLearning(
           query.trim(),
           paperId || null,
-          scopeTypes[searchScope]
+          scopeTypes[effectiveScope]
         )
       );
     } catch (reason) {
@@ -111,11 +119,11 @@ export function ExtendedLearning({
         <div>
           <span className="eyebrow">围绕论文继续学习</span>
           <h1>拓展学习</h1>
-          <p>从当前论文和问题出发，检索相关论文、文字资料、视频课程和本地资源。</p>
+          <p>从当前论文和问题出发，检索相关论文、文字资料、B站视频、公开视频和课程资源。</p>
         </div>
         <div className="learning-hero-status">
-          <strong>{videos.length}</strong>
-          <span>项本地视频可参与检索</span>
+          <strong>全站</strong>
+          <span>B站公开视频 + 公开视频/课程入口 + {videos.length} 项收藏链接</span>
         </div>
       </header>
 
@@ -159,7 +167,16 @@ export function ExtendedLearning({
         <div className="learning-examples">
           <span>示例</span>
           {examples.map((example) => (
-            <button key={example} type="button" onClick={() => setQuery(example)}>{example}</button>
+            <button
+              key={example.text}
+              type="button"
+              onClick={() => {
+                setQuery(example.text);
+                if (example.scope) setSearchScope(example.scope);
+              }}
+            >
+              {example.text}
+            </button>
           ))}
         </div>
       </form>
@@ -234,8 +251,8 @@ export function ExtendedLearning({
 
       <details className="local-resource-manager">
         <summary>
-          <span><strong>本地视频资源</strong><small>上传、编辑或登记已有MP4，作为拓展学习的私有资料来源。</small></span>
-          <span>{videos.length} 项</span>
+          <span><strong>收藏的B站视频</strong><small>可选维护常用链接；公开搜索会自动覆盖B站全站视频。</small></span>
+          <span>{videos.length} 项收藏</span>
         </summary>
         <VideoLibrary
           embedded
@@ -258,7 +275,7 @@ function LearningResourceRow({
   return (
     <li className="learning-resource-row">
       <span className="learning-resource-index">{String(index).padStart(2, "0")}</span>
-      {resource.thumbnail_url && <img src={resource.thumbnail_url} alt="" />}
+      {resource.thumbnail_url && !resource.source.includes("B站") && <img src={resource.thumbnail_url} alt="" />}
       <div className="learning-resource-main">
         <div className="learning-resource-meta">
           <span>{typeLabels[resource.resource_type]}</span>

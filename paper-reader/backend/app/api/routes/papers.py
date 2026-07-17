@@ -5,6 +5,8 @@ from pathlib import Path
 import shutil
 from uuid import uuid4
 
+from pypdf import PdfReader
+
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -18,10 +20,12 @@ from fastapi import (
 
 from app.core.config import get_settings
 from app.models.schemas import (
-    ConversationRecord,
+    BilingualPageResponse,
+    ChunkExplanationResponse,
     GuideResponse,
     MindMapResponse,
     PaperContentsResponse,
+    PaperChunk,
     PaperRecord,
     PaperStatus,
 )
@@ -38,6 +42,74 @@ def _paper_upload_path(paper: PaperRecord) -> Path:
     if upload_path.parent != uploads_root:
         raise HTTPException(status_code=400, detail="论文文件路径不安全")
     return upload_path
+
+
+def _extract_page_layout_text(paper: PaperRecord, page: int) -> str:
+    upload_path = _paper_upload_path(paper)
+    if not upload_path.is_file():
+        return ""
+    try:
+        pdf_page = PdfReader(str(upload_path)).pages[page - 1]
+        try:
+            raw_text = pdf_page.extract_text(extraction_mode="layout") or ""
+        except TypeError:
+            raw_text = pdf_page.extract_text() or ""
+    except (IndexError, OSError, ValueError):
+        return ""
+    lines = [line.rstrip() for line in raw_text.splitlines() if line.strip()]
+    return "\n".join(lines).strip()[:12000]
+
+
+def _needs_table_text_fallback(chunk: PaperChunk) -> bool:
+    if chunk.kind != "table":
+        return False
+    table_text = str(chunk.metadata.get("table_text") or "").strip()
+    # MinerU may return only an image/caption for a visually complex table.
+    # The PDF text layer is still useful in that case, so do not restrict the
+    # fallback to the exact placeholder string.
+    return not table_text
+
+
+def _enrich_table_chunks(
+    paper: PaperRecord,
+    chunks: list[PaperChunk],
+) -> list[PaperChunk]:
+    page_texts: dict[int, str] = {}
+    enriched: list[PaperChunk] = []
+    for chunk in chunks:
+        if not _needs_table_text_fallback(chunk):
+            enriched.append(chunk)
+            continue
+        if chunk.page not in page_texts:
+            page_texts[chunk.page] = _extract_page_layout_text(paper, chunk.page)
+        page_text = page_texts[chunk.page]
+        if not page_text:
+            enriched.append(chunk)
+            continue
+        updated = chunk.model_copy(deep=True)
+        updated.content = f"[表格]\n{page_text}"
+        updated.metadata["table_text"] = page_text
+        updated.metadata["table_text_source"] = "pypdf-page-layout-fallback"
+        enriched.append(updated)
+    return enriched
+
+
+def _cached_bilingual_has_placeholder_table(result: BilingualPageResponse) -> bool:
+    for block in result.blocks:
+        if block.kind != "table":
+            continue
+        if str(block.metadata.get("table_text") or "").strip():
+            continue
+        source = block.source_text.strip()
+        body = source.removeprefix("[表格]").strip()
+        caption = str(block.metadata.get("caption") or "").strip()
+        if (
+            not body
+            or body in {"该页包含一张表格", "This page contains a table."}
+            or (caption and body == caption)
+        ):
+            return True
+    return False
 
 
 def _find_duplicate(file_sha256: str) -> PaperRecord | None:
@@ -321,35 +393,92 @@ async def translate(
     )
 
 
-# ── conversation management ────────────────────────────────────────
-
-
 @router.get(
-    "/{paper_id}/conversations",
-    response_model=list[ConversationRecord],
+    "/{paper_id}/bilingual/{page}",
+    response_model=BilingualPageResponse,
 )
-def list_conversations(paper_id: str):
-    get_paper(paper_id)
-    return runtime.store.load_conversations(paper_id)
+def get_cached_bilingual_page(
+    paper_id: str,
+    page: int,
+    target_language: str = Query(default="中文"),
+) -> BilingualPageResponse:
+    paper = get_paper(paper_id)
+    if page < 1 or (paper.page_count and page > paper.page_count):
+        raise HTTPException(status_code=404, detail="论文页码不存在")
+    cached = runtime.store.load_bilingual_page(paper_id, page, target_language)
+    if not cached or _cached_bilingual_has_placeholder_table(cached):
+        raise HTTPException(status_code=404, detail="本页尚未生成中文译文")
+    return cached
 
 
-@router.get(
-    "/{paper_id}/conversations/{conversation_id}",
-    response_model=ConversationRecord,
+@router.post(
+    "/{paper_id}/bilingual/{page}",
+    response_model=BilingualPageResponse,
 )
-def get_conversation(paper_id: str, conversation_id: str):
-    conv = runtime.store.load_conversation(conversation_id)
-    if not conv or conv.paper_id != paper_id:
-        raise HTTPException(status_code=404, detail="对话不存在")
-    return conv
+async def create_bilingual_page(
+    paper_id: str,
+    page: int,
+    target_language: str = Query(default="中文"),
+    refresh: bool = Query(default=False),
+) -> BilingualPageResponse:
+    paper = get_paper(paper_id)
+    if paper.status != PaperStatus.ready:
+        raise HTTPException(status_code=409, detail="论文尚未解析完成")
+    if page < 1 or (paper.page_count and page > paper.page_count):
+        raise HTTPException(status_code=404, detail="论文页码不存在")
+    if not refresh:
+        cached = runtime.store.load_bilingual_page(paper_id, page, target_language)
+        if cached and not _cached_bilingual_has_placeholder_table(cached):
+            return cached
+
+    chunks = [
+        chunk
+        for chunk in runtime.kb.all_chunks(paper_id)
+        if chunk.page == page
+        and chunk.kind in {"text", "list", "image", "chart", "table", "equation", "code"}
+    ]
+    chunks = _enrich_table_chunks(paper, chunks)
+    if not chunks:
+        raise HTTPException(status_code=404, detail="本页没有可用于对照阅读的解析内容")
+    trace_id = runtime.coordinator.new_trace_id()
+    blocks = await runtime.coordinator.run(
+        "translate-page",
+        trace_id=trace_id,
+        chunks=chunks,
+        target_language=target_language,
+    )
+    result = BilingualPageResponse(
+        paper_id=paper_id,
+        page=page,
+        target_language=target_language,
+        blocks=blocks,
+        agent_trace_id=trace_id,
+    )
+    runtime.store.save_bilingual_page(result)
+    return result
 
 
-@router.delete(
-    "/{paper_id}/conversations/{conversation_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+@router.post(
+    "/{paper_id}/chunks/{chunk_id}/explanation",
+    response_model=ChunkExplanationResponse,
 )
-def delete_conversation(paper_id: str, conversation_id: str):
-    conv = runtime.store.load_conversation(conversation_id)
-    if not conv or conv.paper_id != paper_id:
-        raise HTTPException(status_code=404, detail="对话不存在")
-    runtime.store.delete_conversation(conversation_id)
+async def explain_chunk(
+    paper_id: str,
+    chunk_id: str,
+) -> ChunkExplanationResponse:
+    paper = get_paper(paper_id)
+    if paper.status != PaperStatus.ready:
+        raise HTTPException(status_code=409, detail="论文尚未解析完成")
+    chunk = next(
+        (item for item in runtime.kb.all_chunks(paper_id) if item.chunk_id == chunk_id),
+        None,
+    )
+    if chunk is None:
+        raise HTTPException(status_code=404, detail="论文切片不存在")
+    enriched = _enrich_table_chunks(paper, [chunk])[0]
+    return await runtime.coordinator.run(
+        "explain-chunk",
+        paper_id=paper_id,
+        filename=paper.filename,
+        chunk=enriched,
+    )

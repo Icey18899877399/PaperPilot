@@ -4,10 +4,12 @@ import re
 
 from app.agents.base import BaseAgent
 from app.models.schemas import (
+    ChunkExplanationResponse,
     GuideResponse,
     MindMapBranch,
     MindMapResponse,
     MindMapSubBranch,
+    PaperChunk,
 )
 from app.services.knowledge_base import KnowledgeBase
 from app.services.llm import LLMClient
@@ -22,8 +24,8 @@ class PaperUnderstandingAgent(BaseAgent):
         self.llm = llm
 
     async def run(self, paper_id: str, filename: str, trace_id: str) -> GuideResponse:
-        chunks = self.kb.all_chunks(paper_id)
-        self.log(trace_id, "read-paper", f"读取{len(chunks)}个论文切片")
+        chunks = self.kb.retrieval_chunks(paper_id)
+        self.log(trace_id, "read-paper", f"读取{len(chunks)}个检索切片")
         context = "\n\n".join(chunk.content for chunk in chunks[:8])[:10000]
         generated = await self.llm.complete_json(
             (
@@ -207,6 +209,51 @@ class PaperUnderstandingAgent(BaseAgent):
             title=f"{filename.removesuffix('.pdf')} · 论文思维导图",
             center=center,
             branches=branches,
+            agent_trace_id=trace_id,
+        )
+
+    async def explain_chunk(
+        self,
+        paper_id: str,
+        filename: str,
+        chunk: PaperChunk,
+        trace_id: str,
+    ) -> ChunkExplanationResponse:
+        kind_label = {
+            "image": "图片",
+            "chart": "图表",
+            "table": "表格",
+            "equation": "公式",
+            "code": "代码",
+            "list": "列表",
+        }.get(chunk.kind, "正文")
+        explanation = await self.llm.complete(
+            (
+                "你是论文精读Agent。仅依据给定切片，用中文解释它在论文中的含义。"
+                "先概括切片表达的内容，再说明关键术语、数据或关系，最后给出阅读时应关注的结论。"
+                "表格需要解释行列含义、主要比较和显著数据；图表需要解释趋势与结论。"
+                "不要虚构切片中没有的信息，控制在220字以内。只输出纯文本，"
+                "不要使用Markdown标题、星号加粗或代码块。"
+            ),
+            (
+                f"论文：{filename}\n"
+                f"位置：第{chunk.page}页，类型：{kind_label}\n\n"
+                f"切片内容：\n{chunk.content[:12000]}"
+            ),
+            max_tokens=700,
+        )
+        if not explanation:
+            content = chunk.content.replace("\n", " ").strip()
+            explanation = (
+                f"这是第{chunk.page}页的{kind_label}切片。"
+                f"当前未配置可用模型，可先依据原始内容阅读：{content[:420]}"
+            )
+        self.log(trace_id, "explain-chunk", f"解释第{chunk.page}页{kind_label}切片")
+        return ChunkExplanationResponse(
+            paper_id=paper_id,
+            chunk_id=chunk.chunk_id,
+            page=chunk.page,
+            explanation=explanation,
             agent_trace_id=trace_id,
         )
 

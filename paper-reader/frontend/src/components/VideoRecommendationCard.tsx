@@ -1,23 +1,19 @@
-import { useState } from "react";
-
 import type { VideoResource } from "../types";
 
 interface Props {
   video: VideoResource;
 }
 
-export function VideoRecommendationCard({ video }: Props) {
-  const [playing, setPlaying] = useState(false);
+const bilibiliSearchUrl = (video: VideoResource) => {
+  const terms = [video.title, ...video.knowledge_points, ...video.keywords].filter(Boolean).slice(0, 4);
+  return `https://search.bilibili.com/all?keyword=${encodeURIComponent(terms.join(" "))}`;
+};
 
+export function VideoRecommendationCard({ video }: Props) {
   return (
-    <article className="video-recommendation-card">
-      <img
-        className="video-cover"
-        src={video.cover_url || "/media/videos/default-video-cover.svg"}
-        alt={`${video.title}封面`}
-      />
+    <article className="video-recommendation-card title-only">
       <div className="video-recommendation-copy">
-        <span className="video-label">相关学习视频</span>
+        <span className="video-label">相关B站学习视频</span>
         <strong>{video.title}</strong>
         <p>{video.description}</p>
         {video.recommendation_reason && (
@@ -28,20 +24,11 @@ export function VideoRecommendationCard({ video }: Props) {
             <span key={item}>{item}</span>
           ))}
         </div>
-        <button
-          className="primary-action compact-action"
-          type="button"
-          onClick={() => setPlaying((value) => !value)}
-        >
-          {playing ? "收起视频" : "播放视频"}
-        </button>
+        <div className="video-card-actions">
+          <a href={video.file_url} target="_blank" rel="noreferrer">打开B站</a>
+          <a href={bilibiliSearchUrl(video)} target="_blank" rel="noreferrer">搜索相似</a>
+        </div>
       </div>
-      {playing && (
-        <video className="recommended-video-player" controls autoPlay preload="metadata">
-          <source src={video.file_url} type="video/mp4" />
-          当前浏览器不支持视频播放。
-        </video>
-      )}
     </article>
   );
 }

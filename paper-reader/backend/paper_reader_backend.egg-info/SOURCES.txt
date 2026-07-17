@@ -13,6 +13,7 @@ app/api/routes/__init__.py
 app/api/routes/agents.py
 app/api/routes/chat.py
 app/api/routes/health.py
+app/api/routes/learning.py
 app/api/routes/models.py
 app/api/routes/papers.py
 app/api/routes/videos.py
@@ -22,6 +23,7 @@ app/models/__init__.py
 app/models/schemas.py
 app/services/__init__.py
 app/services/knowledge_base.py
+app/services/learning.py
 app/services/llm.py
 app/services/parser.py
 app/services/runtime.py
@@ -32,6 +34,11 @@ paper_reader_backend.egg-info/SOURCES.txt
 paper_reader_backend.egg-info/dependency_links.txt
 paper_reader_backend.egg-info/requires.txt
 paper_reader_backend.egg-info/top_level.txt
+tests/test_bilingual_page.py
+tests/test_chunk_explanation.py
 tests/test_health.py
+tests/test_learning_module.py
 tests/test_mineru_adapter.py
+tests/test_retrieval_chunking.py
 tests/test_us01_upload_flow.py
+tests/test_video_module.py

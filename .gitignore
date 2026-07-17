@@ -18,6 +18,7 @@
 **/*.tsbuildinfo
 
 # PaperPilot runtime data
+paper-reader/dev-*.log
 paper-reader/backend/data/uploads/
 paper-reader/backend/data/assets/
 paper-reader/backend/data/indexes/

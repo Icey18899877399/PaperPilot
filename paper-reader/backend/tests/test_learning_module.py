@@ -30,7 +30,7 @@ class DisabledLLM:
 
 @pytest.mark.asyncio
 async def test_learning_service_combines_and_deduplicates_grounded_resources(tmp_path) -> None:
-    settings = Settings(backend_dir=tmp_path, youtube_api_key="")
+    settings = Settings(backend_dir=tmp_path)
     kb = KnowledgeBase()
     paper = PaperRecord(
         id="paper-1",
@@ -50,15 +50,14 @@ async def test_learning_service_combines_and_deduplicates_grounded_resources(tmp
             )
         ],
     )
-    video_path = tmp_path / "data" / "videos" / "attention.mp4"
-    video_path.parent.mkdir(parents=True)
-    video_path.write_bytes(b"video")
-    videos = VideoCatalog(video_path.parent / "catalog.json")
+    video_dir = tmp_path / "data" / "videos"
+    video_dir.mkdir(parents=True)
+    videos = VideoCatalog(video_dir / "catalog.json")
     videos.create(
         title="Attention入门",
         description="讲解Transformer注意力机制",
         knowledge_points=["attention"],
-        local_path=video_path.name,
+        file_url="attention Transformer 教程",
     )
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -113,6 +112,25 @@ async def test_learning_service_combines_and_deduplicates_grounded_resources(tmp
                     }
                 },
             )
+        if request.url.host == "api.bilibili.com":
+            return httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "result": [
+                            {
+                                "bvid": "BV1attention",
+                                "title": "<em class=\"keyword\">Attention</em> retrieval 视频讲解",
+                                "description": "Transformer attention tutorial",
+                                "author": "AI课程",
+                                "duration": "12:30",
+                                "pic": "//i0.hdslb.com/bfs/archive/demo.jpg",
+                                "tag": "Transformer,attention",
+                            }
+                        ]
+                    }
+                },
+            )
         raise AssertionError(f"unexpected provider request: {request.url}")
 
     service = LearningService(
@@ -136,17 +154,104 @@ async def test_learning_service_combines_and_deduplicates_grounded_resources(tmp
         paper,
     )
 
-    assert any(item.local for item in result.resources)
+    assert any(item.id.startswith("bilibili-curated:") for item in result.resources)
+    assert any(item.id.startswith("bilibili:") for item in result.resources)
     assert sum(item.resource_type == LearningResourceType.paper for item in result.resources) == 1
     assert any(item.resource_type == LearningResourceType.article for item in result.resources)
+    assert any(item.source.startswith("B站") for item in result.resources)
+    assert any("bilibili.com/video/BV1attention" in item.url for item in result.resources)
     assert any(item.source == "YouTube" for item in result.resources)
+    assert any(item.source == "MIT OpenCourseWare" for item in result.resources)
     assert {status.provider for status in result.providers} == {
         "OpenAlex",
         "Crossref",
         "Wikipedia",
-        "YouTube",
+        "B站",
+        "公开视频",
     }
     assert result.learning_path
+
+
+@pytest.mark.asyncio
+async def test_learning_service_uses_paper_context_for_video_queries(tmp_path) -> None:
+    settings = Settings(backend_dir=tmp_path)
+    kb = KnowledgeBase()
+    paper = PaperRecord(
+        id="paper-video",
+        filename="context-paper.pdf",
+        file_url="/media/papers/context-paper.pdf",
+        status=PaperStatus.ready,
+        page_count=3,
+    )
+    kb.index(
+        paper.id,
+        [
+            PaperChunk(
+                chunk_id="chunk-video",
+                paper_id=paper.id,
+                page=1,
+                content=(
+                    "This paper studies retrieval augmented generation with contrastive "
+                    "decoding. Retrieval improves grounding, and contrastive decoding "
+                    "reduces hallucination in large language models."
+                ),
+            )
+        ],
+    )
+    captured_keywords: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "api.bilibili.com":
+            captured_keywords.append(str(request.url.params.get("keyword") or ""))
+            return httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "result": [
+                            {
+                                "result_type": "video",
+                                "data": [
+                                    {
+                                        "bvid": "BV1ContextDemo",
+                                        "title": "Retrieval augmented generation 论文精读",
+                                        "description": "RAG and contrastive decoding tutorial",
+                                        "author": "AI课程",
+                                        "duration": "20:00",
+                                        "pic": "//i0.hdslb.com/bfs/archive/context.jpg",
+                                        "tag": "retrieval,RAG,contrastive decoding",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                },
+            )
+        raise AssertionError(f"unexpected provider request: {request.url}")
+
+    service = LearningService(
+        settings,
+        kb,
+        DisabledLLM(),  # type: ignore[arg-type]
+        VideoCatalog(tmp_path / "videos" / "catalog.json"),
+        [],
+        transport=httpx.MockTransport(handler),
+    )
+    result = await service.search(
+        LearningSearchRequest(
+            query="推荐和这篇论文相关的学习视频",
+            paper_id=paper.id,
+            resource_types=[LearningResourceType.video, LearningResourceType.course],
+        ),
+        paper,
+    )
+
+    assert captured_keywords
+    assert "retrieval" in captured_keywords[0].lower()
+    assert "contrastive" in captured_keywords[0].lower()
+    assert "教程" in captured_keywords[0]
+    assert any(item.url.endswith("BV1ContextDemo") for item in result.resources)
+    assert any(item.source == "YouTube" for item in result.resources)
+    assert any(item.source == "Coursera" for item in result.resources)
 
 
 @pytest.mark.asyncio
@@ -180,6 +285,42 @@ async def test_learning_service_keeps_text_search_available_when_wikipedia_fails
     wikipedia = next(status for status in result.providers if status.provider == "Wikipedia")
     assert wikipedia.success is False
     assert "搜索入口" in wikipedia.message
+
+
+@pytest.mark.asyncio
+async def test_learning_service_routes_paper_intent_even_when_video_scope_selected(tmp_path) -> None:
+    settings = Settings(backend_dir=tmp_path)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "api.openalex.org":
+            return httpx.Response(
+                200,
+                json={"results": [{"id": "W1", "display_name": "A Survey of Attention"}]},
+            )
+        if request.url.host == "api.crossref.org":
+            return httpx.Response(200, json={"message": {"items": []}})
+        raise AssertionError(f"unexpected provider request: {request.url}")
+
+    service = LearningService(
+        settings,
+        KnowledgeBase(),
+        DisabledLLM(),  # type: ignore[arg-type]
+        VideoCatalog(tmp_path / "videos" / "catalog.json"),
+        [],
+        transport=httpx.MockTransport(handler),
+    )
+    result = await service.search(
+        LearningSearchRequest(
+            query="查找与这篇论文相关的综述和近期工作",
+            resource_types=[LearningResourceType.video, LearningResourceType.course],
+        ),
+        None,
+    )
+
+    assert any(item.resource_type == LearningResourceType.paper for item in result.resources)
+    bilibili = next(status for status in result.providers if status.provider == "B站")
+    assert bilibili.enabled is False
+    assert "未选择视频类型" in bilibili.message
 
 
 def test_learning_api_accepts_paper_aware_query() -> None:
