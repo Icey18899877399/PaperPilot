@@ -9,18 +9,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
     "markmap-lib": "^0.18.12",
     "markmap-view": "^0.18.12",
     "pdfjs-dist": "^4.8.69",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-pdf": "^9.2.1",
-    "typescript": "~5.7.2",
-    "vite": "^6.0.5"
+    "react-pdf": "^9.2.1"
   },
   "devDependencies": {
     "@types/react": "^19.0.2",
-    "@types/react-dom": "^19.0.2"
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.7.2",
+    "vite": "^6.0.5"
   }
 }

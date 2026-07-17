@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from typing import Any
+
 from app.agents.base import BaseAgent
 from app.agents.chat_agent import ChatAgent
 from app.agents.paper_agent import PaperUnderstandingAgent
@@ -39,3 +42,17 @@ class CoordinatorAgent(BaseAgent):
         if task == "chat":
             return await self.chat_agent.run(trace_id=trace_id, **payload)
         raise ValueError(f"Unsupported agent task: {task}")
+
+    async def stream_chat(
+        self,
+        paper_id: str,
+        question: str,
+    ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+        trace_id = self.new_trace_id()
+        self.log(trace_id, "route", "任务路由到chat-stream")
+        async for event in self.chat_agent.stream(
+            paper_id=paper_id,
+            question=question,
+            trace_id=trace_id,
+        ):
+            yield event

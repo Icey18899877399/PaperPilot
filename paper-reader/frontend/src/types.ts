@@ -18,6 +18,7 @@ export interface Citation {
   page: number;
   quote: string;
   kind: string;
+  section?: string;
   resource_url?: string | null;
   bbox?: number[] | null;
 }
@@ -43,6 +44,7 @@ export interface PaperContentsResponse {
   total: number;
   counts: Record<string, number>;
   items: PaperChunk[];
+  hidden?: number;
 }
 
 export interface ChunkExplanation {
@@ -91,7 +93,6 @@ export interface VideoUpdatePayload {
   title?: string;
   description?: string;
   source?: string;
-  file_url?: string;
   keywords?: string[];
   tags?: string[];
   knowledge_points?: string[];
@@ -137,12 +138,41 @@ export interface LearningSearchResponse {
   agent_trace_id: string;
 }
 
+export interface GuideCitation {
+  section: string;
+  page?: number | null;
+}
+
+export interface GuidePromptInfo {
+  key: string;
+  name: string;
+  domain: string;
+  audience: string;
+  description: string;
+  is_default: boolean;
+}
+
+export interface GuideSection {
+  content: string;
+  citations: GuideCitation[];
+}
+
 export interface Guide {
   paper_id: string;
   title: string;
   overview: string;
   key_points: string[];
   reading_questions: string[];
+  one_liner?: string;
+  background?: GuideSection;
+  research_question?: GuideSection;
+  method?: GuideSection;
+  experiment?: GuideSection;
+  results?: GuideSection;
+  innovations?: GuideSection;
+  limitations?: GuideSection;
+  keywords?: string[];
+  generator?: string;
   agent_trace_id: string;
 }
 

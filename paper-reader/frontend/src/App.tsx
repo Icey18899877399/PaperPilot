@@ -1,26 +1,129 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { api } from "./api";
-import { AgentLogView } from "./components/AgentLogView";
 import { BilingualReader } from "./components/BilingualReader";
 import { ChatPanel } from "./components/ChatPanel";
-import { ExtendedLearning } from "./components/ExtendedLearning";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import { GuidePanel } from "./components/GuidePanel";
-import { MindMapView } from "./components/MindMapView";
 import { PaperReader } from "./components/PaperReader";
 import { StructuredContentView } from "./components/StructuredContentView";
+import { ToastStack } from "./components/Toast";
 import { UploadPanel } from "./components/UploadPanel";
+import { useToast } from "./hooks/useToast";
+import { useWorkspaceResize } from "./hooks/useWorkspaceResize";
 import type { AgentLog, CitationTarget, Guide, ModelStatus, Paper, VideoResource } from "./types";
 
 type View = "workspace" | "mindmap" | "logs" | "learning";
 type AssistantTab = "guide" | "chat" | "bilingual" | "contents";
+type NavIconName =
+  | "workspace"
+  | "mindmap"
+  | "logs"
+  | "learning"
+  | "guide"
+  | "chat"
+  | "bilingual"
+  | "contents";
 
-interface ResizeSession {
-  side: "left" | "right";
-  startX: number;
-  startLeft: number;
-  startRight: number;
+function NavIcon({ name }: { name: NavIconName }) {
+  const paths: Record<NavIconName, ReactNode> = {
+    workspace: (
+      <>
+        <rect x="3" y="4" width="7" height="16" rx="2" />
+        <rect x="14" y="4" width="7" height="16" rx="2" />
+      </>
+    ),
+    mindmap: (
+      <>
+        <circle cx="12" cy="5" r="2" />
+        <circle cx="5" cy="18" r="2" />
+        <circle cx="19" cy="18" r="2" />
+        <path d="M12 7v4M5 16v-3h14v3" />
+      </>
+    ),
+    logs: (
+      <>
+        <path d="M5 4h14v16H5z" />
+        <path d="M8 8h8M8 12h8M8 16h5" />
+      </>
+    ),
+    learning: (
+      <>
+        <path d="m3 7 9-4 9 4-9 4-9-4Z" />
+        <path d="M6 9.5V15c3 2.4 9 2.4 12 0V9.5" />
+      </>
+    ),
+    guide: (
+      <>
+        <path d="M5 4h10a4 4 0 0 1 4 4v12H8a3 3 0 0 1-3-3V4Z" />
+        <path d="M8 8h7M8 12h5" />
+        <path d="m18 3 .6 1.5L20 5l-1.4.5L18 7l-.6-1.5L16 5l1.4-.5L18 3Z" />
+      </>
+    ),
+    chat: (
+      <>
+        <path d="M4 5h16v11H9l-5 4V5Z" />
+        <path d="M8 9h8M8 12h5" />
+      </>
+    ),
+    bilingual: (
+      <>
+        <path d="M4 5h7v14H4zM13 5h7v14h-7z" />
+        <path d="M6.5 9h2M15.5 9h2M6.5 13h2M15.5 13h2" />
+      </>
+    ),
+    contents: (
+      <>
+        <rect x="3" y="4" width="7" height="7" rx="1.5" />
+        <rect x="14" y="4" width="7" height="7" rx="1.5" />
+        <rect x="3" y="15" width="7" height="5" rx="1.5" />
+        <rect x="14" y="15" width="7" height="5" rx="1.5" />
+      </>
+    ),
+  };
+  return (
+    <svg className="nav-label-icon" viewBox="0 0 24 24" aria-hidden="true">
+      {paths[name]}
+    </svg>
+  );
+}
+
+function BrandIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3.5 6.2c3.2-.75 6.05.05 8.5 2.15V19.5c-2.45-2.1-5.3-2.9-8.5-2.15V6.2Z" />
+      <path d="M20.5 6.2c-3.2-.75-6.05.05-8.5 2.15V19.5c2.45-2.1 5.3-2.9 8.5-2.15V6.2Z" />
+      <path d="M12 8.35V19.5" />
+    </svg>
+  );
+}
+
+// 第四批工程化：非首屏模块按需加载，避免Markmap与学习模块挤入阅读工作台首包。
+const AgentLogView = lazy(() => import("./components/AgentLogView").then(
+  (module) => ({ default: module.AgentLogView }),
+));
+const ExtendedLearning = lazy(() => import("./components/ExtendedLearning").then(
+  (module) => ({ default: module.ExtendedLearning }),
+));
+const MindMapView = lazy(() => import("./components/MindMapView").then(
+  (module) => ({ default: module.MindMapView }),
+));
+
+function ViewFallback() {
+  return (
+    <div className="view-loading" role="status">
+      <span />
+      正在载入功能模块…
+    </div>
+  );
 }
 
 export default function App() {
@@ -29,14 +132,14 @@ export default function App() {
   const [guide, setGuide] = useState<Guide | null>(null);
   const [uploading, setUploading] = useState(false);
   const [guideLoading, setGuideLoading] = useState(false);
+  const [guideStreamStatus, setGuideStreamStatus] = useState("");
   const [targetCitation, setTargetCitation] = useState<CitationTarget | null>(null);
-  const [error, setError] = useState("");
+  const [chatPrefill, setChatPrefill] = useState<{ text: string; nonce: number } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Paper | null>(null);
   const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
   const [view, setView] = useState<View>("workspace");
   const [assistantTab, setAssistantTab] = useState<AssistantTab>("guide");
   const [readerPage, setReaderPage] = useState(1);
-  const [leftPaneWidth, setLeftPaneWidth] = useState(250);
-  const [rightPaneWidth, setRightPaneWidth] = useState(440);
   const [sourceSelection, setSourceSelection] = useState("");
   const [pairedSourceText, setPairedSourceText] = useState("");
   const [logs, setLogs] = useState<AgentLog[]>([]);
@@ -45,60 +148,9 @@ export default function App() {
   const [deletingPaperId, setDeletingPaperId] = useState<string | null>(null);
   const [retryingPaperId, setRetryingPaperId] = useState<string | null>(null);
   const monitoringPapers = useRef(new Set<string>());
-  const resizeSession = useRef<ResizeSession | null>(null);
-
-  useEffect(() => {
-    const move = (event: PointerEvent) => {
-      const session = resizeSession.current;
-      if (!session) return;
-      const delta = event.clientX - session.startX;
-      if (session.side === "left") {
-        const maxLeft = Math.max(
-          240,
-          Math.min(420, window.innerWidth - session.startRight - 440),
-        );
-        setLeftPaneWidth(Math.min(maxLeft, Math.max(180, session.startLeft + delta)));
-      } else {
-        const maxRight = Math.max(
-          380,
-          Math.min(720, window.innerWidth - session.startLeft - 440),
-        );
-        setRightPaneWidth(Math.min(maxRight, Math.max(320, session.startRight - delta)));
-      }
-    };
-    const stop = () => {
-      resizeSession.current = null;
-      document.body.classList.remove("is-resizing-workspace");
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop);
-    window.addEventListener("pointercancel", stop);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", stop);
-      window.removeEventListener("pointercancel", stop);
-      document.body.classList.remove("is-resizing-workspace");
-    };
-  }, []);
-
-  const startResize = (
-    side: ResizeSession["side"],
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
-    event.preventDefault();
-    resizeSession.current = {
-      side,
-      startX: event.clientX,
-      startLeft: leftPaneWidth,
-      startRight: rightPaneWidth,
-    };
-    document.body.classList.add("is-resizing-workspace");
-  };
-
-  const workspaceStyle = {
-    "--library-width": `${leftPaneWidth}px`,
-    "--assistant-width": `${rightPaneWidth}px`,
-  } as CSSProperties;
+  const guideRequest = useRef<AbortController | null>(null);
+  const { toasts, notify, dismissToast } = useToast();
+  const { startResize, workspaceStyle } = useWorkspaceResize();
 
   const handleReaderPageChange = useCallback((nextPage: number) => {
     setReaderPage(nextPage);
@@ -129,14 +181,14 @@ export default function App() {
         updatePaper(updated);
         if (updated.status !== "parsing") {
           if (updated.status === "failed") {
-            setError(updated.error || "论文解析失败");
+            notify("error", updated.error || `「${updated.filename}」解析失败，可在列表中重试`);
           }
           return;
         }
       }
-      setError("论文解析时间过长，请稍后刷新论文状态");
+      notify("error", "论文解析时间过长，请稍后刷新论文状态");
     } catch (reason) {
-      setError((reason as Error).message);
+      notify("error", (reason as Error).message);
     } finally {
       monitoringPapers.current.delete(paperId);
     }
@@ -147,11 +199,16 @@ export default function App() {
       setPapers(items);
       items.filter((item) => item.status === "parsing")
         .forEach((item) => void monitorPaper(item.id));
-    }).catch(() => undefined);
+    }).catch(() => {
+      notify("error", "无法连接后端服务（8000端口），请先启动后端再刷新页面");
+    });
     api.modelStatus().then(setModelStatus).catch(() => undefined);
   }, []);
 
   useEffect(() => {
+    guideRequest.current?.abort();
+    guideRequest.current = null;
+    setGuideStreamStatus("");
     setGuide(null);
     if (!paper || paper.status !== "ready") return;
     let cancelled = false;
@@ -161,7 +218,7 @@ export default function App() {
         if (!cancelled) setGuide(cached);
       })
       .catch((reason) => {
-        if (!cancelled) setError((reason as Error).message);
+        if (!cancelled) notify("error", (reason as Error).message);
       })
       .finally(() => {
         if (!cancelled) setGuideLoading(false);
@@ -171,11 +228,10 @@ export default function App() {
 
   const loadLogs = async () => {
     setViewLoading(true);
-    setError("");
     try {
       setLogs(await api.agentLogs());
     } catch (reason) {
-      setError((reason as Error).message);
+      notify("error", (reason as Error).message);
     } finally {
       setViewLoading(false);
     }
@@ -183,11 +239,10 @@ export default function App() {
 
   const loadVideos = async () => {
     setViewLoading(true);
-    setError("");
     try {
       setVideos(await api.listVideos());
     } catch (reason) {
-      setError((reason as Error).message);
+      notify("error", (reason as Error).message);
     } finally {
       setViewLoading(false);
     }
@@ -200,7 +255,6 @@ export default function App() {
 
   const upload = async (file: File) => {
     setUploading(true);
-    setError("");
     try {
       const created = await api.uploadPaper(file);
       setPapers((items) => [created, ...items]);
@@ -212,29 +266,48 @@ export default function App() {
       setTargetCitation(null);
       if (created.status === "parsing") void monitorPaper(created.id);
     } catch (reason) {
-      setError((reason as Error).message);
+      notify("error", (reason as Error).message);
     } finally {
       setUploading(false);
     }
   };
 
-  const generateGuide = async () => {
+  const generateGuide = async (promptKey?: string) => {
     if (!paper) return;
+    guideRequest.current?.abort();
+    const controller = new AbortController();
+    guideRequest.current = controller;
     setGuideLoading(true);
-    setError("");
+    setGuideStreamStatus("正在连接论文理解 Agent");
     try {
-      setGuide(await api.createGuide(paper.id, Boolean(guide)));
+      await api.streamGuide(
+        paper.id,
+        Boolean(guide),
+        promptKey,
+        {
+          onStatus: (payload) => {
+            if (typeof payload.message === "string") setGuideStreamStatus(payload.message);
+          },
+          onProgress: (payload) => {
+            if (typeof payload.message === "string") setGuideStreamStatus(payload.message);
+          },
+          onComplete: setGuide,
+        },
+        controller.signal,
+      );
     } catch (reason) {
-      setError((reason as Error).message);
+      if ((reason as Error).name === "AbortError") return;
+      notify("error", (reason as Error).message);
     } finally {
+      if (guideRequest.current === controller) guideRequest.current = null;
       setGuideLoading(false);
+      setGuideStreamStatus("");
     }
   };
 
   const retryPaper = async (item: Paper) => {
     if (item.status !== "failed" || retryingPaperId) return;
     setRetryingPaperId(item.id);
-    setError("");
     try {
       const updated = await api.retryPaper(item.id);
       updatePaper(updated);
@@ -246,20 +319,21 @@ export default function App() {
       setTargetCitation(null);
       void monitorPaper(updated.id);
     } catch (reason) {
-      setError((reason as Error).message);
+      notify("error", (reason as Error).message);
     } finally {
       setRetryingPaperId(null);
     }
   };
 
-  const deletePaper = async (item: Paper) => {
+  const requestDeletePaper = (item: Paper) => {
     if (item.status === "parsing" || deletingPaperId) return;
-    const confirmed = window.confirm(
-      `确定删除“${item.filename}”吗？\n将同时删除PDF、解析资源、检索索引和思维导图。`
-    );
-    if (!confirmed) return;
+    setPendingDelete(item);
+  };
+
+  const confirmDeletePaper = async () => {
+    const item = pendingDelete;
+    if (!item) return;
     setDeletingPaperId(item.id);
-    setError("");
     try {
       await api.deletePaper(item.id);
       setPapers((items) => items.filter((value) => value.id !== item.id));
@@ -268,8 +342,10 @@ export default function App() {
         setGuide(null);
         setTargetCitation(null);
       }
+      notify("success", `已删除「${item.filename}」及其解析数据`);
+      setPendingDelete(null);
     } catch (reason) {
-      setError((reason as Error).message);
+      notify("error", (reason as Error).message);
     } finally {
       setDeletingPaperId(null);
     }
@@ -278,16 +354,42 @@ export default function App() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div className="brand-mark">P</div>
-        <div>
+        <div className="brand-mark"><BrandIcon /></div>
+        <div className="brand-copy">
           <strong>PaperPilot</strong>
-          <span>多Agent论文智能阅读系统</span>
+          <span>多 Agent 论文智能阅读系统</span>
         </div>
-        <nav>
-          <button className={view === "workspace" ? "active" : ""} onClick={() => openView("workspace")}>阅读工作台</button>
-          <button className={view === "mindmap" ? "active" : ""} onClick={() => openView("mindmap")}>思维导图</button>
-          <button className={view === "logs" ? "active" : ""} onClick={() => openView("logs")}>Agent日志</button>
-          <button className={view === "learning" ? "active" : ""} onClick={() => openView("learning")}>拓展学习</button>
+        <nav aria-label="主功能导航">
+          <div className="topnav-segmented" role="group" aria-label="页面视图切换">
+            <button
+              className={`topnav-item ${view === "workspace" ? "active" : ""}`}
+              aria-current={view === "workspace" ? "page" : undefined}
+              aria-label="阅读工作台"
+              title="阅读工作台"
+              onClick={() => openView("workspace")}
+            ><NavIcon name="workspace" /><span>阅读工作台</span></button>
+            <button
+              className={`topnav-item ${view === "mindmap" ? "active" : ""}`}
+              aria-current={view === "mindmap" ? "page" : undefined}
+              aria-label="思维导图"
+              title="思维导图"
+              onClick={() => openView("mindmap")}
+            ><NavIcon name="mindmap" /><span>思维导图</span></button>
+            <button
+              className={`topnav-item ${view === "logs" ? "active" : ""}`}
+              aria-current={view === "logs" ? "page" : undefined}
+              aria-label="Agent 日志"
+              title="Agent 日志"
+              onClick={() => openView("logs")}
+            ><NavIcon name="logs" /><span>Agent 日志</span></button>
+            <button
+              className={`topnav-item ${view === "learning" ? "active" : ""}`}
+              aria-current={view === "learning" ? "page" : undefined}
+              aria-label="拓展学习"
+              title="拓展学习"
+              onClick={() => openView("learning")}
+            ><NavIcon name="learning" /><span>拓展学习</span></button>
+          </div>
           <span
             className={
               modelStatus?.configured
@@ -302,7 +404,7 @@ export default function App() {
         </nav>
       </header>
 
-      {error && <div className="error-banner">{error}</div>}
+      <ToastStack toasts={toasts} onClose={dismissToast} />
 
       {view === "workspace" && <div className="workspace" style={workspaceStyle}>
         <aside className="sidebar paper-library-sidebar">
@@ -329,7 +431,7 @@ export default function App() {
                 >
                   <span className="file-icon">PDF</span>
                   <span>
-                    <strong>{item.filename}</strong>
+                    <strong title={item.filename}>{item.filename}</strong>
                     <small title={item.error ?? item.stage}>
                       {item.status === "ready"
                         ? `${item.page_count}页 · ${item.stage || "已解析"}`
@@ -358,7 +460,7 @@ export default function App() {
                     className="paper-delete"
                     title={item.status === "parsing" ? "解析期间不能删除" : "删除论文及相关数据"}
                     disabled={item.status === "parsing" || deletingPaperId === item.id}
-                    onClick={() => void deletePaper(item)}
+                    onClick={() => requestDeletePaper(item)}
                   >
                     {deletingPaperId === item.id ? "…" : "删除"}
                   </button>
@@ -393,36 +495,52 @@ export default function App() {
         <section className="workspace-assistant">
           <nav className="assistant-tabs" aria-label="论文辅助功能">
             <button
-              className={assistantTab === "guide" ? "active" : ""}
+              className={`assistant-tab assistant-tab-guide ${assistantTab === "guide" ? "active" : ""}`}
+              aria-current={assistantTab === "guide" ? "page" : undefined}
               onClick={() => setAssistantTab("guide")}
-            >智能导读</button>
+            ><NavIcon name="guide" /><span>智能导读</span></button>
             <button
-              className={assistantTab === "chat" ? "active" : ""}
+              className={`assistant-tab assistant-tab-chat ${assistantTab === "chat" ? "active" : ""}`}
+              aria-current={assistantTab === "chat" ? "page" : undefined}
               onClick={() => setAssistantTab("chat")}
-            >论文对话</button>
+            ><NavIcon name="chat" /><span>论文对话</span></button>
             <button
-              className={assistantTab === "bilingual" ? "active" : ""}
+              className={`assistant-tab assistant-tab-bilingual ${assistantTab === "bilingual" ? "active" : ""}`}
+              aria-current={assistantTab === "bilingual" ? "page" : undefined}
               onClick={() => setAssistantTab("bilingual")}
-            >中英对照</button>
+            ><NavIcon name="bilingual" /><span>中英对照</span></button>
             <button
-              className={assistantTab === "contents" ? "active" : ""}
+              className={`assistant-tab assistant-tab-contents ${assistantTab === "contents" ? "active" : ""}`}
+              aria-current={assistantTab === "contents" ? "page" : undefined}
               onClick={() => setAssistantTab("contents")}
-            >结构化切片</button>
+            ><NavIcon name="contents" /><span>结构化切片</span></button>
           </nav>
           <div className="assistant-panel-body">
             {assistantTab === "guide" && (
               <GuidePanel
                 guide={guide}
                 loading={guideLoading}
+                streamStatus={guideStreamStatus}
                 disabled={!paper || paper.status !== "ready"}
                 onGenerate={generateGuide}
+                onLocate={(page) => {
+                  // US-02：点击导读引用页码跳转到PDF对应页
+                  setTargetCitation({ page, bbox: null });
+                }}
+                onAsk={(question) => {
+                  // US-02：导读思考题一键转入论文对话（US-05入口）
+                  setChatPrefill({ text: question, nonce: Date.now() });
+                  setAssistantTab("chat");
+                }}
               />
             )}
             {assistantTab === "chat" && (
               <ChatPanel
                 paperId={paper?.status === "ready" ? paper.id : undefined}
+                prefill={chatPrefill}
+                onPrefillConsumed={() => setChatPrefill(null)}
                 onLocate={(target) => {
-                  setTargetCitation({ page: target.page, bbox: null });
+                  setTargetCitation({ page: target.page, bbox: target.bbox ?? null });
                   setReaderPage(target.page);
                 }}
               />
@@ -449,19 +567,31 @@ export default function App() {
           </div>
         </section>
       </div>}
-      {view === "logs" && <AgentLogView logs={logs} loading={viewLoading} onRefresh={loadLogs} />}
-      {view === "learning" && (
-        <ExtendedLearning
-          papers={papers}
-          activePaper={paper}
-          videos={videos}
-          loading={viewLoading}
-          onVideosChanged={loadVideos}
-        />
-      )}
-      <div hidden={view !== "mindmap"}>
-        <MindMapView paper={paper} />
-      </div>
+      <Suspense fallback={<ViewFallback />}>
+        {view === "logs" && (
+          <AgentLogView logs={logs} loading={viewLoading} onRefresh={loadLogs} />
+        )}
+        {view === "learning" && (
+          <ExtendedLearning
+            papers={papers}
+            activePaper={paper}
+            videos={videos}
+            loading={viewLoading}
+            onVideosChanged={loadVideos}
+          />
+        )}
+        {view === "mindmap" && <MindMapView paper={paper} />}
+      </Suspense>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`删除「${pendingDelete?.filename ?? ""}」？`}
+        body="将同时删除原始PDF、解析资源、检索索引、导读与思维导图，且不可恢复。"
+        confirmText="删除"
+        danger
+        busy={deletingPaperId !== null}
+        onConfirm={() => void confirmDeletePaper()}
+        onCancel={() => setPendingDelete(null)}
+      />
     </main>
   );
 }

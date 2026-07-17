@@ -6,11 +6,13 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 dev-*.log
+*.egg-info/
 backend/data/uploads/*
 backend/data/indexes/*
 backend/data/assets/*
 backend/data/logs/*
 backend/data/translations/*
+backend/data/explanations/*
 backend/data/papers.json
 !backend/data/**/.gitkeep
 frontend/node_modules/

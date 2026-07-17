@@ -9,6 +9,18 @@ interface Props {
   paper: Paper | null;
 }
 
+function syncSvgViewport(
+  canvas: HTMLDivElement | null,
+  svg: SVGSVGElement | null,
+) {
+  if (!canvas || !svg) return;
+  const { width, height } = canvas.getBoundingClientRect();
+  if (width <= 0 || height <= 0) return;
+  // Markmap 的缩放模块需要可解析的数值尺寸；仅使用 CSS 百分比会触发 SVGLength 异常。
+  svg.setAttribute("width", String(Math.round(width)));
+  svg.setAttribute("height", String(Math.round(height)));
+}
+
 export function MindMapView({ paper }: Props) {
   const [mindMap, setMindMap] = useState<MindMap | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,6 +66,7 @@ export function MindMapView({ paper }: Props) {
 
   useEffect(() => {
     if (!mindMap || !svgRef.current) return;
+    syncSvgViewport(canvasRef.current, svgRef.current);
     const lines = [`# ${mindMap.center}`];
     mindMap.branches.forEach((branch) => {
       lines.push(`## ${branch.label}`);
@@ -91,6 +104,7 @@ export function MindMapView({ paper }: Props) {
     let timer = window.setTimeout(() => void markmapRef.current?.fit(), 100);
     const observer = new ResizeObserver(() => {
       window.clearTimeout(timer);
+      syncSvgViewport(canvas, svgRef.current);
       timer = window.setTimeout(() => void markmapRef.current?.fit(), 90);
     });
     observer.observe(canvas);

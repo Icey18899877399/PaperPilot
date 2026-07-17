@@ -26,6 +26,18 @@ class Settings(BaseSettings):
     mineru_language: str = "ch"
     mineru_timeout_seconds: int = 3600
 
+    # US-04可选真实向量服务（OpenAI兼容/embeddings接口）。
+    # 留空时使用内置本地TF-IDF向量索引，无需外部依赖。
+    embedding_api_url: str = ""
+    embedding_api_key: str = ""
+    embedding_model: str = ""
+
+    # US-07可选视觉模型（OpenAI兼容/chat/completions，多模态）。
+    # 配置后图片/图表切片解释走视觉模型；留空则回退纯文本解释。
+    vision_api_url: str = ""
+    vision_api_key: str = ""
+    vision_model: str = ""
+
     openalex_api_key: str = ""
     crossref_mailto: str = ""
     learning_search_timeout_seconds: int = 20

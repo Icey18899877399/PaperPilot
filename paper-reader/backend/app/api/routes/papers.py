@@ -13,11 +13,14 @@ from fastapi import (
     File,
     HTTPException,
     Query,
+    Request,
     Response,
     UploadFile,
     status,
 )
+from fastapi.responses import StreamingResponse
 
+from app.api.sse import sse_event
 from app.core.config import get_settings
 from app.models.schemas import (
     BilingualPageResponse,
@@ -28,9 +31,13 @@ from app.models.schemas import (
     PaperChunk,
     PaperRecord,
     PaperStatus,
+    RetrievalDebugResponse,
+    RetrievalHit,
 )
 from app.models.schemas import TranslationRequest
 from app.models.schemas import TranslationResponse
+from app.services.knowledge_base import classify_display_zones
+from app.services.llm import LLMServiceError
 from app.services.runtime import runtime
 
 router = APIRouter()
@@ -303,19 +310,76 @@ def list_paper_contents(
     paper_id: str,
     kind: str | None = Query(default=None),
     page: int | None = Query(default=None, ge=1),
+    include_all: bool = Query(
+        default=False,
+        description="为true时包含作者区/References/Appendix的版面块；默认只展示正文区",
+    ),
 ) -> PaperContentsResponse:
     get_paper(paper_id)
     chunks = runtime.kb.all_chunks(paper_id)
-    counts = dict(Counter(chunk.kind for chunk in chunks))
-    items = [
-        chunk
-        for chunk in chunks
-        if (kind is None or chunk.kind == kind) and (page is None or chunk.page == page)
-    ]
+
+    def matches(chunk: PaperChunk) -> bool:
+        return (kind is None or chunk.kind == kind) and (
+            page is None or chunk.page == page
+        )
+
+    # 默认视图过滤作者区/参考文献/附录的碎块（US-01核对需求用 include_all=true 查看全部）
+    if include_all:
+        visible = chunks
+        hidden = 0
+    else:
+        zones = classify_display_zones(chunks)
+
+        def zone_visible(chunk: PaperChunk) -> bool:
+            # 分区过滤只治理正文/列表碎片；图/图表/表格/公式/代码等多模态内容
+            # 稀少且有核对价值，即便位于附录（如附录B中的公式）也照常展示
+            if chunk.kind not in {"text", "list"}:
+                return True
+            return zones.get(chunk.chunk_id, "body") == "body"
+
+        visible = [chunk for chunk in chunks if zone_visible(chunk)]
+        hidden = sum(1 for chunk in chunks if matches(chunk)) - sum(
+            1 for chunk in visible if matches(chunk)
+        )
+
+    counts = dict(Counter(chunk.kind for chunk in visible))
+    items = [chunk for chunk in visible if matches(chunk)]
     return PaperContentsResponse(
         paper_id=paper_id,
         total=len(items),
         counts=counts,
+        items=items,
+        hidden=hidden,
+    )
+
+
+@router.get("/{paper_id}/search", response_model=RetrievalDebugResponse)
+def search_paper(
+    paper_id: str,
+    q: str = Query(min_length=1, max_length=200, description="检索问题"),
+    limit: int = Query(default=5, ge=1, le=20),
+) -> RetrievalDebugResponse:
+    """检索调试接口（US-04：检索测试能够展示召回片段及相关度）。"""
+    get_paper(paper_id)
+    scored = runtime.kb.search_scored(paper_id, q, limit)
+    items = [
+        RetrievalHit(
+            chunk_id=chunk.chunk_id,
+            page=chunk.page,
+            kind=chunk.kind,
+            score=score,
+            section_path=[
+                str(value) for value in chunk.metadata.get("section_path", [])
+            ],
+            excerpt=chunk.content[:280],
+        )
+        for score, chunk in scored
+    ]
+    return RetrievalDebugResponse(
+        paper_id=paper_id,
+        query=q,
+        vector_backend=runtime.kb.vector_index.backend_name(paper_id),
+        total_indexed=len(runtime.kb.retrieval_chunks(paper_id)),
         items=items,
     )
 
@@ -333,6 +397,10 @@ def get_cached_guide(paper_id: str) -> GuideResponse:
 async def create_guide(
     paper_id: str,
     refresh: bool = Query(default=False, description="为true时忽略缓存并重新生成"),
+    prompt_key: str | None = Query(
+        default=None,
+        description="导读提示词版本（见app/prompts/guide.py注册表），缺省用通用学术版",
+    ),
 ) -> GuideResponse:
     paper = get_paper(paper_id)
     if paper.status != PaperStatus.ready:
@@ -341,13 +409,104 @@ async def create_guide(
         cached = runtime.store.load_guide(paper_id)
         if cached:
             return cached
-    guide = await runtime.coordinator.run(
-        "guide",
-        paper_id=paper_id,
-        filename=paper.filename,
-    )
+    try:
+        guide = await runtime.coordinator.run(
+            "guide",
+            paper_id=paper_id,
+            filename=paper.filename,
+            prompt_key=prompt_key,
+        )
+    except LLMServiceError as exc:
+        # Agent内部已有降级路径，此处兜底覆盖其余模型异常，避免裸500（US-02）
+        raise HTTPException(status_code=502, detail=f"导读生成失败：{exc}") from exc
     runtime.store.save_guide(guide)
     return guide
+
+
+@router.post("/{paper_id}/guide/stream")
+async def create_guide_stream(
+    paper_id: str,
+    request: Request,
+    refresh: bool = Query(default=False, description="为true时忽略缓存并重新生成"),
+    prompt_key: str | None = Query(default=None, description="导读提示词版本"),
+) -> StreamingResponse:
+    """US-02导读SSE：持续回传阶段和生成量，完成后发送严格结构化结果。"""
+    paper = get_paper(paper_id)
+    if paper.status != PaperStatus.ready:
+        raise HTTPException(status_code=409, detail="论文尚未解析完成")
+
+    async def events():
+        if not refresh:
+            cached = runtime.store.load_guide(paper_id)
+            if cached:
+                yield sse_event("complete", cached.model_dump(mode="json"))
+                return
+
+        queue: asyncio.Queue[tuple[str, object]] = asyncio.Queue()
+        generated_chars = 0
+
+        async def on_delta(delta: str) -> None:
+            nonlocal generated_chars
+            previous = generated_chars
+            generated_chars += len(delta)
+            # 每约120字报告一次进度，避免逐token事件拖慢浏览器主线程。
+            if generated_chars < 80 or previous // 120 != generated_chars // 120:
+                await queue.put(
+                    (
+                        "progress",
+                        {
+                            "chars": generated_chars,
+                            "message": f"正在组织结构化导读 · 已生成约{generated_chars}字",
+                        },
+                    )
+                )
+
+        async def generate() -> None:
+            try:
+                guide = await runtime.coordinator.run(
+                    "guide",
+                    paper_id=paper_id,
+                    filename=paper.filename,
+                    prompt_key=prompt_key,
+                    on_delta=on_delta,
+                )
+                runtime.store.save_guide(guide)
+                await queue.put(("complete", guide.model_dump(mode="json")))
+            except Exception as exc:
+                message = (
+                    f"导读生成失败：{exc}"
+                    if isinstance(exc, LLMServiceError)
+                    else "导读生成失败，请稍后重试"
+                )
+                await queue.put(("error", {"message": message}))
+
+        yield sse_event("status", {"message": "正在采样全文并核对关键章节"})
+        task = asyncio.create_task(generate())
+        try:
+            while True:
+                if await request.is_disconnected():
+                    task.cancel()
+                    return
+                try:
+                    event, data = await asyncio.wait_for(queue.get(), timeout=15)
+                except TimeoutError:
+                    yield ": keep-alive\n\n"
+                    continue
+                yield sse_event(event, data)
+                if event in {"complete", "error"}:
+                    return
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/{paper_id}/mind-map", response_model=MindMapResponse)
@@ -465,6 +624,7 @@ async def create_bilingual_page(
 async def explain_chunk(
     paper_id: str,
     chunk_id: str,
+    refresh: bool = Query(default=False, description="为true时忽略缓存并重新解释"),
 ) -> ChunkExplanationResponse:
     paper = get_paper(paper_id)
     if paper.status != PaperStatus.ready:
@@ -475,10 +635,23 @@ async def explain_chunk(
     )
     if chunk is None:
         raise HTTPException(status_code=404, detail="论文切片不存在")
+    # 命中缓存直接返回，避免同一切片反复点击重复消耗模型（US-04 派生数据持久化）
+    if not refresh:
+        cached = runtime.store.load_chunk_explanation(paper_id, chunk_id)
+        if cached:
+            return cached
     enriched = _enrich_table_chunks(paper, [chunk])[0]
-    return await runtime.coordinator.run(
-        "explain-chunk",
-        paper_id=paper_id,
-        filename=paper.filename,
-        chunk=enriched,
-    )
+    try:
+        result = await runtime.coordinator.run(
+            "explain-chunk",
+            paper_id=paper_id,
+            filename=paper.filename,
+            chunk=enriched,
+        )
+    except LLMServiceError as exc:
+        # 模型服务异常返回结构化502，而非裸500
+        raise HTTPException(status_code=502, detail=f"切片解释失败：{exc}") from exc
+    # 仅在有可用模型时缓存（无模型的兜底文案不落盘，配置模型后无需刷新即可生成真解释）
+    if runtime.llm.enabled or runtime.vision.enabled:
+        runtime.store.save_chunk_explanation(result)
+    return result

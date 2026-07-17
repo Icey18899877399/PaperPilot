@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import shutil
 from hashlib import sha256
 from pathlib import Path
 
 from app.models.schemas import (
     BilingualPageResponse,
+    ChunkExplanationResponse,
     GuideResponse,
     MindMapResponse,
     PaperChunk,
@@ -27,10 +29,12 @@ class PaperStore:
         self.guides_dir = data_dir / "guides"
         self.mindmaps_dir = data_dir / "mindmaps"
         self.translations_dir = data_dir / "translations"
+        self.explanations_dir = data_dir / "explanations"
         self.indexes_dir.mkdir(parents=True, exist_ok=True)
         self.guides_dir.mkdir(parents=True, exist_ok=True)
         self.mindmaps_dir.mkdir(parents=True, exist_ok=True)
         self.translations_dir.mkdir(parents=True, exist_ok=True)
+        self.explanations_dir.mkdir(parents=True, exist_ok=True)
 
     def load_papers(self) -> list[PaperRecord]:
         if not self.papers_file.exists():
@@ -81,6 +85,27 @@ class PaperStore:
         path = self.mindmaps_dir / f"{mind_map.paper_id}.json"
         self._atomic_write(path, mind_map.model_dump(mode="json"))
 
+    def load_chunk_explanation(
+        self,
+        paper_id: str,
+        chunk_id: str,
+    ) -> ChunkExplanationResponse | None:
+        path = self._explanation_path(paper_id, chunk_id)
+        if not path.exists():
+            return None
+        return ChunkExplanationResponse.model_validate_json(
+            path.read_text(encoding="utf-8")
+        )
+
+    def save_chunk_explanation(self, response: ChunkExplanationResponse) -> None:
+        path = self._explanation_path(response.paper_id, response.chunk_id)
+        self._atomic_write(path, response.model_dump(mode="json"))
+
+    def _explanation_path(self, paper_id: str, chunk_id: str) -> Path:
+        # 按论文分子目录、chunk_id 取哈希做文件名，兼容任意 chunk_id 形态
+        chunk_key = sha256(chunk_id.encode("utf-8")).hexdigest()[:16]
+        return self.explanations_dir / paper_id / f"{chunk_key}.json"
+
     def load_bilingual_page(
         self,
         paper_id: str,
@@ -112,10 +137,15 @@ class PaperStore:
 
     def clear_derived_data(self, paper_id: str) -> None:
         (self.indexes_dir / f"{paper_id}.json").unlink(missing_ok=True)
+        (self.indexes_dir / f"{paper_id}.vectors.json").unlink(missing_ok=True)
         (self.guides_dir / f"{paper_id}.json").unlink(missing_ok=True)
         (self.mindmaps_dir / f"{paper_id}.json").unlink(missing_ok=True)
         for path in self.translations_dir.glob(f"{paper_id}-*.json"):
             path.unlink(missing_ok=True)
+        # 删除该论文的全部切片解释（US-04 删除同步清理关联数据）
+        explanations_root = self.explanations_dir / paper_id
+        if explanations_root.is_dir():
+            shutil.rmtree(explanations_root)
 
     def _translation_path(
         self,

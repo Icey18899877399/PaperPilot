@@ -15,7 +15,7 @@ const agentLabels: Record<string, string> = {
 
 export function AgentLogView({ logs, loading, onRefresh }: Props) {
   return (
-    <section className="content-page">
+    <section className="content-page agent-log-page">
       <header className="content-page-header">
         <div>
           <span className="eyebrow">多Agent可追溯执行</span>
