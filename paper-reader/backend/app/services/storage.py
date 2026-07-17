@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-from hashlib import sha256
 from pathlib import Path
 
 from app.models.schemas import (
-    BilingualPageResponse,
+    ConversationRecord,
     GuideResponse,
     MindMapResponse,
     PaperChunk,
@@ -26,11 +25,11 @@ class PaperStore:
         self.indexes_dir = data_dir / "indexes"
         self.guides_dir = data_dir / "guides"
         self.mindmaps_dir = data_dir / "mindmaps"
-        self.translations_dir = data_dir / "translations"
+        self.conversations_dir = data_dir / "conversations"
         self.indexes_dir.mkdir(parents=True, exist_ok=True)
         self.guides_dir.mkdir(parents=True, exist_ok=True)
         self.mindmaps_dir.mkdir(parents=True, exist_ok=True)
-        self.translations_dir.mkdir(parents=True, exist_ok=True)
+        self.conversations_dir.mkdir(parents=True, exist_ok=True)
 
     def load_papers(self) -> list[PaperRecord]:
         if not self.papers_file.exists():
@@ -81,27 +80,6 @@ class PaperStore:
         path = self.mindmaps_dir / f"{mind_map.paper_id}.json"
         self._atomic_write(path, mind_map.model_dump(mode="json"))
 
-    def load_bilingual_page(
-        self,
-        paper_id: str,
-        page: int,
-        target_language: str,
-    ) -> BilingualPageResponse | None:
-        path = self._translation_path(paper_id, page, target_language)
-        if not path.exists():
-            return None
-        return BilingualPageResponse.model_validate_json(
-            path.read_text(encoding="utf-8")
-        )
-
-    def save_bilingual_page(self, result: BilingualPageResponse) -> None:
-        path = self._translation_path(
-            result.paper_id,
-            result.page,
-            result.target_language,
-        )
-        self._atomic_write(path, result.model_dump(mode="json"))
-
     def delete_paper(self, paper_id: str) -> None:
         remaining = [paper for paper in self.load_papers() if paper.id != paper_id]
         self._atomic_write(
@@ -114,17 +92,39 @@ class PaperStore:
         (self.indexes_dir / f"{paper_id}.json").unlink(missing_ok=True)
         (self.guides_dir / f"{paper_id}.json").unlink(missing_ok=True)
         (self.mindmaps_dir / f"{paper_id}.json").unlink(missing_ok=True)
-        for path in self.translations_dir.glob(f"{paper_id}-*.json"):
-            path.unlink(missing_ok=True)
+        for conv_file in self.conversations_dir.glob(f"{paper_id}-*.json"):
+            conv_file.unlink(missing_ok=True)
 
-    def _translation_path(
-        self,
-        paper_id: str,
-        page: int,
-        target_language: str,
-    ) -> Path:
-        language_key = sha256(target_language.encode("utf-8")).hexdigest()[:12]
-        return self.translations_dir / f"{paper_id}-{page}-{language_key}.json"
+    # ── conversation persistence ──────────────────────────────────
+
+    def load_conversations(self, paper_id: str) -> list[ConversationRecord]:
+        conversations = []
+        for path in sorted(
+            self.conversations_dir.glob(f"{paper_id}-*.json"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        ):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                conversations.append(ConversationRecord.model_validate(payload))
+            except (json.JSONDecodeError, KeyError):
+                continue
+        return conversations
+
+    def load_conversation(self, conversation_id: str) -> ConversationRecord | None:
+        matches = list(self.conversations_dir.glob(f"*-{conversation_id}.json"))
+        if not matches:
+            return None
+        return ConversationRecord.model_validate_json(matches[0].read_text(encoding="utf-8"))
+
+    def save_conversation(self, conversation: ConversationRecord) -> None:
+        path = self.conversations_dir / f"{conversation.paper_id}-{conversation.id}.json"
+        self._atomic_write(path, conversation.model_dump(mode="json"))
+
+    def delete_conversation(self, conversation_id: str) -> None:
+        # conversation stored as {paper_id}-{conversation_id}.json
+        for path in self.conversations_dir.glob(f"*-{conversation_id}.json"):
+            path.unlink(missing_ok=True)
 
     @staticmethod
     def _atomic_write(path: Path, payload: object) -> None:

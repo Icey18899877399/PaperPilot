@@ -1,8 +1,9 @@
 import type {
   AgentLog,
   BilingualPage,
-  ChunkExplanation,
   ChatResponse,
+  ChunkExplanation,
+  Conversation,
   Guide,
   LearningResourceType,
   LearningSearchResponse,
@@ -87,12 +88,33 @@ export const api = {
       { method: "POST" }
     ),
 
-  chat: (paperId: string, question: string) =>
+  chat: (paperId: string, question: string, conversationId?: string) =>
     request<ChatResponse>("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paper_id: paperId, question })
+      body: JSON.stringify({
+        paper_id: paperId,
+        question,
+        conversation_id: conversationId || null
+      })
     }),
+
+  listConversations: (paperId: string) =>
+    request<Conversation[]>(`/api/papers/${paperId}/conversations`),
+
+  getConversation: (paperId: string, conversationId: string) =>
+    request<Conversation>(`/api/papers/${paperId}/conversations/${conversationId}`),
+
+  deleteConversation: async (paperId: string, conversationId: string) => {
+    const response = await fetch(
+      `/api/papers/${paperId}/conversations/${conversationId}`,
+      { method: "DELETE" }
+    );
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.detail ?? `删除失败：${response.status}`);
+    }
+  },
 
   translate: (paperId: string, text: string) =>
     request<{ translated_text: string }>(`/api/papers/${paperId}/translate`, {

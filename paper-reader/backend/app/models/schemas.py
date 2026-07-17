@@ -131,11 +131,6 @@ class BilingualPageResponse(BaseModel):
     agent_trace_id: str
 
 
-class ChatRequest(BaseModel):
-    paper_id: str
-    question: str = Field(min_length=1)
-
-
 class VideoResource(BaseModel):
     id: str
     title: str
@@ -207,11 +202,38 @@ class LearningSearchResponse(BaseModel):
     agent_trace_id: str
 
 
+class ChatRequest(BaseModel):
+    paper_id: str
+    question: str = Field(min_length=1)
+    conversation_id: str | None = None
+
+
 class ChatResponse(BaseModel):
     answer: str
     citations: list[Citation] = Field(default_factory=list)
     videos: list[VideoResource] = Field(default_factory=list)
     agent_trace_id: str
+    conversation_id: str = ""
+    evidence_sufficient: bool = True
+
+
+class MessageRecord(BaseModel):
+    id: str
+    role: str  # "user" | "assistant"
+    text: str
+    citations: list[Citation] = Field(default_factory=list)
+    videos: list[VideoResource] = Field(default_factory=list)
+    evidence_sufficient: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ConversationRecord(BaseModel):
+    id: str
+    paper_id: str
+    title: str = ""
+    messages: list[MessageRecord] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class AgentLog(BaseModel):

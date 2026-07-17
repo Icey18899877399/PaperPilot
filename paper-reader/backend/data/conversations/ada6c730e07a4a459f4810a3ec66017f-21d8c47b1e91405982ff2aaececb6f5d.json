@@ -1,0 +1,320 @@
+{
+  "id": "21d8c47b1e91405982ff2aaececb6f5d",
+  "paper_id": "ada6c730e07a4a459f4810a3ec66017f",
+  "title": "论文的贡献是什么？",
+  "messages": [
+    {
+      "id": "9ef020267c8046b48aa0526e236fbddf",
+      "role": "user",
+      "text": "论文的贡献是什么？",
+      "citations": [],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-14T07:56:38.281771Z"
+    },
+    {
+      "id": "178d7bfedcdf4342bba02ace8e94b83d",
+      "role": "assistant",
+      "text": "根据论文片段，该论文的主要贡献可归纳为以下三点：\n\n1. **提出了开放式的未来事件预测任务（OpenEP）**：与以往将事件预测限定为分类任务（如是非题、候选集、分类体系）不同，OpenEP任务能够生成灵活且多样化的预测结果，更贴合真实世界场景。这体现在预测问题的多样性和预测结果的格式自由性上。【第1页】\n\n2. **构建了开放式的未来事件预测数据集（OpenEPBench）**：该数据集从时间、地点、事件发展、事件结果、事件影响、事件响应及其他七个视角构建问题，以促进对事件全面演化的深入分析；同时收集包含结果的自由文本作为真实答案，提供语义完整且细节丰富的预测结果。【第1页】\n\n3. **提出了利益相关者增强的未来事件预测框架（StkFEP）**：该框架通过提取事件中的利益相关者来扩展问题以收集多样化信息，并收集与问题相关且相似的历史事件来揭示潜在的演化模式。【第1页】",
+      "citations": [
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m36",
+          "page": 3,
+          "quote": "[表格] Figure 2: Example from the OpenEPBench dataset.\nField | Content | Hot Topic | 总理访问澳大利亚期间宣布对澳大利亚实施单方面免签政策。[Whilevisiting Australia, Premier announced that China will implement ",
+          "kind": "table",
+          "resource_url": "/media/assets/ada6c730e07a4a459f4810a3ec66017f/ada6c730e07a4a459f4810a3ec66017f-2408.06578v2/auto/images/3e3692b727b61b8cf08df778aaefbcc2eccd986bca116738b522b12adf46fea3.jpg",
+          "bbox": [
+            84.0,
+            102.0,
+            478.0,
+            343.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m1",
+          "page": 1,
+          "quote": "OpenEP: Open-Ended Future Event Prediction",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            200.0,
+            101.0,
+            795.0,
+            126.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m2",
+          "page": 1,
+          "quote": "Yong Guan Tsinghua University Beijing, China gy2022@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            129.0,
+            137.0,
+            333.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m3",
+          "page": 1,
+          "quote": "Hao Peng Tsinghua University Beijing, China peng-21@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            393.0,
+            137.0,
+            606.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m4",
+          "page": 1,
+          "quote": "Lei Hou Tsinghua University Beijing, China houlei@tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            281.0,
+            210.0,
+            447.0,
+            272.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m5",
+          "page": 1,
+          "quote": "Xiaozhi Wang Tsinghua University Beijing, China wangxz20@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            655.0,
+            137.0,
+            879.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m6",
+          "page": 1,
+          "quote": "Juanzi Li Tsinghua University Beijing, China lijuanzi@tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            545.0,
+            210.0,
+            720.0,
+            272.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m7",
+          "page": 1,
+          "quote": "Abstract",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            281.0,
+            158.0,
+            296.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m8",
+          "page": 1,
+          "quote": "Future event prediction (FEP) is a long-standing and crucial task in the world, as understanding the evolution of events enables early risk identification, informed decision-making",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            81.0,
+            299.0,
+            483.0,
+            732.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m9",
+          "page": 1,
+          "quote": "CCS Concepts",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            742.0,
+            202.0,
+            757.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m10",
+          "page": 1,
+          "quote": "• Computing methodologies → Information extraction.",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            761.0,
+            454.0,
+            775.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m11",
+          "page": 1,
+          "quote": "ACM Reference Format:",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            781.0,
+            230.0,
+            792.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m12",
+          "page": 1,
+          "quote": "Yong Guan, Hao Peng, Xiaozhi Wang, Lei Hou, and Juanzi Li. 2024. OpenEP: Open-Ended Future Event Prediction. In . ACM, New York, NY, USA, 13 pages. https://doi.org/10.1145/nnnn.nnn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            791.0,
+            483.0,
+            833.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m14",
+          "page": 1,
+          "quote": "1 Introduction",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            516.0,
+            503.0,
+            650.0,
+            517.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m15",
+          "page": 1,
+          "quote": "Future event prediction (FEP) aims to predict the potential future outcomes based on the historical events and the precursors [33]. In Figure 1, given the predictive question “Whic",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            513.0,
+            522.0,
+            915.0,
+            703.0
+          ]
+        }
+      ],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-14T07:56:38.281771Z"
+    },
+    {
+      "id": "763315423edd4f34accdaba6d757d6be",
+      "role": "user",
+      "text": "能否详细说明？",
+      "citations": [],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-14T07:56:52.748528Z"
+    },
+    {
+      "id": "da69174b7e2c450ea6ff5d481b59d8df",
+      "role": "assistant",
+      "text": "好的，我将根据论文片段对上述三点贡献进行更详细的说明。\n\n1.  **关于“开放式未来事件预测任务（OpenEP）”的详细说明**：\n    传统的未来事件预测通常被建模为分类任务，例如预测一个事件“会发生”或“不会发生”（是非题），或者从给定的几个选项中选出最可能的结果（候选集）。这种设定限制了预测的灵活性和多样性。而OpenEP任务的核心创新在于，它允许用户提出**任意形式的、开放式的问题**，并且模型需要**生成自由文本**作为预测结果，而不是从预设的类别中选择。这使得预测结果能够包含更丰富的细节，例如具体的时间、地点、原因、影响等，更贴近现实世界中人们对未来的复杂追问。【第1页】\n\n2.  **关于“开放式未来事件预测数据集（OpenEPBench）”的详细说明**：\n    为了支撑OpenEP任务，论文构建了OpenEPBench数据集。该数据集的设计非常系统化，它从**七个不同的视角**来构建问题，旨在全面覆盖事件演化的各个方面。这七个视角包括：时间、地点、事件发展、事件结果、事件影响、事件响应及其他。例如，对于一个“某国发生地震”的事件，可以从“时间”视角问“救援行动何时结束？”，从“影响”视角问“地震对当地经济造成多大损失？”。对于每个问题，数据集都收集了包含具体结果的**自由文本**作为真实答案，确保了答案的语义完整性和细节丰富度，为模型的训练和评估提供了高质量的标准。【第1页】\n\n3.  **关于“利益相关者增强的未来事件预测框架（StkFEP）”的详细说明**：\n    为了有效解决OpenEP任务，论文提出了StkFEP框架。该框架的核心思想是引入“利益相关者”这一概念来增强预测能力。具体来说，它包含两个关键步骤：\n    *   **提取利益相关者并扩展问题**：首先，框架会从当前事件中自动提取出关键的利益相关者（例如，在“公司裁员”事件中，利益相关者可能是“被裁员工”、“公司管理层”、“竞争对手”等）。然后，它会基于这些利益相关者来扩展原始问题，从而收集到更多元化、更全面的信息。\n    *   **收集相似历史事件**：框架会主动搜索并收集与当前问题相关且相似的历史事件。通过分析这些历史事件是如何演变的，模型可以从中学习到潜在的、可复现的演化模式，从而为预测当前事件的未来走向提供有力的参考依据。【第1页】",
+      "citations": [
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m1",
+          "page": 1,
+          "quote": "OpenEP: Open-Ended Future Event Prediction",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            200.0,
+            101.0,
+            795.0,
+            126.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m2",
+          "page": 1,
+          "quote": "Yong Guan Tsinghua University Beijing, China gy2022@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            129.0,
+            137.0,
+            333.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m3",
+          "page": 1,
+          "quote": "Hao Peng Tsinghua University Beijing, China peng-21@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            393.0,
+            137.0,
+            606.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m4",
+          "page": 1,
+          "quote": "Lei Hou Tsinghua University Beijing, China houlei@tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            281.0,
+            210.0,
+            447.0,
+            272.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m5",
+          "page": 1,
+          "quote": "Xiaozhi Wang Tsinghua University Beijing, China wangxz20@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            655.0,
+            137.0,
+            879.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m6",
+          "page": 1,
+          "quote": "Juanzi Li Tsinghua University Beijing, China lijuanzi@tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            545.0,
+            210.0,
+            720.0,
+            272.0
+          ]
+        }
+      ],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-14T07:56:52.748528Z"
+    }
+  ],
+  "created_at": "2026-07-14T07:56:24.392689Z",
+  "updated_at": "2026-07-14T07:56:52.748528Z"
+}

@@ -1,27 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { api } from "./api";
 import { AgentLogView } from "./components/AgentLogView";
-import { BilingualReader } from "./components/BilingualReader";
 import { ChatPanel } from "./components/ChatPanel";
-import { ExtendedLearning } from "./components/ExtendedLearning";
 import { GuidePanel } from "./components/GuidePanel";
 import { MindMapView } from "./components/MindMapView";
 import { PaperReader } from "./components/PaperReader";
+import { TranslationPanel } from "./components/TranslationPanel";
 import { StructuredContentView } from "./components/StructuredContentView";
 import { UploadPanel } from "./components/UploadPanel";
+import { VideoLibrary } from "./components/VideoLibrary";
 import type { AgentLog, CitationTarget, Guide, ModelStatus, Paper, VideoResource } from "./types";
 
-type View = "workspace" | "mindmap" | "logs" | "learning";
-type AssistantTab = "guide" | "chat" | "bilingual" | "contents";
-
-interface ResizeSession {
-  side: "left" | "right";
-  startX: number;
-  startLeft: number;
-  startRight: number;
-}
+type View = "workspace" | "contents" | "mindmap" | "logs" | "videos";
 
 export default function App() {
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -33,78 +24,12 @@ export default function App() {
   const [error, setError] = useState("");
   const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
   const [view, setView] = useState<View>("workspace");
-  const [assistantTab, setAssistantTab] = useState<AssistantTab>("guide");
-  const [readerPage, setReaderPage] = useState(1);
-  const [leftPaneWidth, setLeftPaneWidth] = useState(250);
-  const [rightPaneWidth, setRightPaneWidth] = useState(440);
-  const [sourceSelection, setSourceSelection] = useState("");
-  const [pairedSourceText, setPairedSourceText] = useState("");
   const [logs, setLogs] = useState<AgentLog[]>([]);
   const [videos, setVideos] = useState<VideoResource[]>([]);
   const [viewLoading, setViewLoading] = useState(false);
   const [deletingPaperId, setDeletingPaperId] = useState<string | null>(null);
   const [retryingPaperId, setRetryingPaperId] = useState<string | null>(null);
   const monitoringPapers = useRef(new Set<string>());
-  const resizeSession = useRef<ResizeSession | null>(null);
-
-  useEffect(() => {
-    const move = (event: PointerEvent) => {
-      const session = resizeSession.current;
-      if (!session) return;
-      const delta = event.clientX - session.startX;
-      if (session.side === "left") {
-        const maxLeft = Math.max(
-          240,
-          Math.min(420, window.innerWidth - session.startRight - 440),
-        );
-        setLeftPaneWidth(Math.min(maxLeft, Math.max(180, session.startLeft + delta)));
-      } else {
-        const maxRight = Math.max(
-          380,
-          Math.min(720, window.innerWidth - session.startLeft - 440),
-        );
-        setRightPaneWidth(Math.min(maxRight, Math.max(320, session.startRight - delta)));
-      }
-    };
-    const stop = () => {
-      resizeSession.current = null;
-      document.body.classList.remove("is-resizing-workspace");
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop);
-    window.addEventListener("pointercancel", stop);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", stop);
-      window.removeEventListener("pointercancel", stop);
-      document.body.classList.remove("is-resizing-workspace");
-    };
-  }, []);
-
-  const startResize = (
-    side: ResizeSession["side"],
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
-    event.preventDefault();
-    resizeSession.current = {
-      side,
-      startX: event.clientX,
-      startLeft: leftPaneWidth,
-      startRight: rightPaneWidth,
-    };
-    document.body.classList.add("is-resizing-workspace");
-  };
-
-  const workspaceStyle = {
-    "--library-width": `${leftPaneWidth}px`,
-    "--assistant-width": `${rightPaneWidth}px`,
-  } as CSSProperties;
-
-  const handleReaderPageChange = useCallback((nextPage: number) => {
-    setReaderPage(nextPage);
-    setSourceSelection("");
-    setPairedSourceText("");
-  }, []);
 
   const updatePaper = (updated: Paper) => {
     setPapers((items) => items.map((item) => item.id === updated.id ? updated : item));
@@ -112,11 +37,10 @@ export default function App() {
   };
 
   const openView = (next: View) => {
-    if (next === "mindmap" && !paper) {
+    if ((next === "contents" || next === "mindmap") && !paper) {
       setPaper(papers.find((item) => item.status === "ready") ?? null);
     }
     setView(next);
-    window.scrollTo({ top: 0, behavior: "auto" });
   };
 
   async function monitorPaper(paperId: string) {
@@ -181,21 +105,15 @@ export default function App() {
     }
   };
 
-  const loadVideos = async () => {
-    setViewLoading(true);
-    setError("");
-    try {
-      setVideos(await api.listVideos());
-    } catch (reason) {
-      setError((reason as Error).message);
-    } finally {
-      setViewLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (view === "logs") void loadLogs();
-    if (view === "learning") void loadVideos();
+    if (view === "videos") {
+      setViewLoading(true);
+      api.listVideos()
+        .then(setVideos)
+        .catch((reason) => setError((reason as Error).message))
+        .finally(() => setViewLoading(false));
+    }
   }, [view]);
 
   const upload = async (file: File) => {
@@ -205,9 +123,6 @@ export default function App() {
       const created = await api.uploadPaper(file);
       setPapers((items) => [created, ...items]);
       setPaper(created);
-      setReaderPage(1);
-      setSourceSelection("");
-      setPairedSourceText("");
       setGuide(null);
       setTargetCitation(null);
       if (created.status === "parsing") void monitorPaper(created.id);
@@ -239,9 +154,6 @@ export default function App() {
       const updated = await api.retryPaper(item.id);
       updatePaper(updated);
       setPaper(updated);
-      setReaderPage(1);
-      setSourceSelection("");
-      setPairedSourceText("");
       setGuide(null);
       setTargetCitation(null);
       void monitorPaper(updated.id);
@@ -285,9 +197,10 @@ export default function App() {
         </div>
         <nav>
           <button className={view === "workspace" ? "active" : ""} onClick={() => openView("workspace")}>阅读工作台</button>
+          <button className={view === "contents" ? "active" : ""} onClick={() => openView("contents")}>结构化内容</button>
           <button className={view === "mindmap" ? "active" : ""} onClick={() => openView("mindmap")}>思维导图</button>
-          <button className={view === "logs" ? "active" : ""} onClick={() => openView("logs")}>Agent日志</button>
-          <button className={view === "learning" ? "active" : ""} onClick={() => openView("learning")}>拓展学习</button>
+          <button className={view === "logs" ? "active" : ""} onClick={() => setView("logs")}>Agent日志</button>
+          <button className={view === "videos" ? "active" : ""} onClick={() => setView("videos")}>视频资源</button>
           <span
             className={
               modelStatus?.configured
@@ -304,15 +217,13 @@ export default function App() {
 
       {error && <div className="error-banner">{error}</div>}
 
-      {view === "workspace" && <div className="workspace" style={workspaceStyle}>
-        <aside className="sidebar paper-library-sidebar">
+      {view === "workspace" && <div className="workspace">
+        <aside className="sidebar">
+          <UploadPanel uploading={uploading} onUpload={upload} />
           <div className="paper-list">
-            <div className="paper-library-heading">
-              <div className="section-heading compact">
-                <h2>论文库</h2>
-                <span>{papers.length}</span>
-              </div>
-              <UploadPanel compact uploading={uploading} onUpload={upload} />
+            <div className="section-heading compact">
+              <h2>论文库</h2>
+              <span>{papers.length}</span>
             </div>
             {papers.map((item) => (
               <div className="paper-row" key={item.id}>
@@ -320,9 +231,6 @@ export default function App() {
                   className={paper?.id === item.id ? "paper-item active" : "paper-item"}
                   onClick={() => {
                     setPaper(item);
-                    setReaderPage(1);
-                    setSourceSelection("");
-                    setPairedSourceText("");
                     setGuide(null);
                     setTargetCitation(null);
                   }}
@@ -366,98 +274,22 @@ export default function App() {
               </div>
             ))}
           </div>
+          <GuidePanel
+            guide={guide}
+            loading={guideLoading}
+            disabled={!paper || paper.status !== "ready"}
+            onGenerate={generateGuide}
+          />
+          <TranslationPanel paperId={paper?.status === "ready" ? paper.id : undefined} />
         </aside>
 
-        <div
-          className="workspace-resizer workspace-resizer-left"
-          role="separator"
-          aria-label="拖动调整论文库宽度"
-          aria-orientation="vertical"
-          onPointerDown={(event) => startResize("left", event)}
-        />
-
-        <PaperReader
-          paper={paper}
-          targetCitation={targetCitation}
-          pairedSourceText={pairedSourceText}
-          onSourceSelection={setSourceSelection}
-          onPageChange={handleReaderPageChange}
-        />
-        <div
-          className="workspace-resizer workspace-resizer-right"
-          role="separator"
-          aria-label="拖动调整右侧功能栏宽度"
-          aria-orientation="vertical"
-          onPointerDown={(event) => startResize("right", event)}
-        />
-        <section className="workspace-assistant">
-          <nav className="assistant-tabs" aria-label="论文辅助功能">
-            <button
-              className={assistantTab === "guide" ? "active" : ""}
-              onClick={() => setAssistantTab("guide")}
-            >智能导读</button>
-            <button
-              className={assistantTab === "chat" ? "active" : ""}
-              onClick={() => setAssistantTab("chat")}
-            >论文对话</button>
-            <button
-              className={assistantTab === "bilingual" ? "active" : ""}
-              onClick={() => setAssistantTab("bilingual")}
-            >中英对照</button>
-            <button
-              className={assistantTab === "contents" ? "active" : ""}
-              onClick={() => setAssistantTab("contents")}
-            >结构化切片</button>
-          </nav>
-          <div className="assistant-panel-body">
-            {assistantTab === "guide" && (
-              <GuidePanel
-                guide={guide}
-                loading={guideLoading}
-                disabled={!paper || paper.status !== "ready"}
-                onGenerate={generateGuide}
-              />
-            )}
-            {assistantTab === "chat" && (
-              <ChatPanel
-                paperId={paper?.status === "ready" ? paper.id : undefined}
-                onLocate={(target) => {
-                  setTargetCitation({ page: target.page, bbox: null });
-                  setReaderPage(target.page);
-                }}
-              />
-            )}
-            {assistantTab === "bilingual" && (
-              <BilingualReader
-                paper={paper}
-                compact
-                activePage={readerPage}
-                sourceSelection={sourceSelection}
-                onPairSelect={setPairedSourceText}
-              />
-            )}
-            {assistantTab === "contents" && (
-              <StructuredContentView
-                paper={paper}
-                compact
-                onLocate={(target) => {
-                  setTargetCitation({ page: target.page, bbox: null });
-                  setReaderPage(target.page);
-                }}
-              />
-            )}
-          </div>
-        </section>
+        <PaperReader paper={paper} targetCitation={targetCitation} />
+        <ChatPanel paperId={paper?.status === "ready" ? paper.id : undefined} onLocate={setTargetCitation} />
       </div>}
       {view === "logs" && <AgentLogView logs={logs} loading={viewLoading} onRefresh={loadLogs} />}
-      {view === "learning" && (
-        <ExtendedLearning
-          papers={papers}
-          activePaper={paper}
-          videos={videos}
-          loading={viewLoading}
-          onVideosChanged={loadVideos}
-        />
+      {view === "videos" && <VideoLibrary videos={videos} loading={viewLoading} />}
+      {view === "contents" && (
+        <StructuredContentView paper={paper} />
       )}
       <div hidden={view !== "mindmap"}>
         <MindMapView paper={paper} />

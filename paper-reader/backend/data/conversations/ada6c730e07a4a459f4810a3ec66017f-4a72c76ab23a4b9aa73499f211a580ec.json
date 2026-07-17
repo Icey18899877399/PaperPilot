@@ -1,0 +1,223 @@
+{
+  "id": "4a72c76ab23a4b9aa73499f211a580ec",
+  "paper_id": "ada6c730e07a4a459f4810a3ec66017f",
+  "title": "解释论文的核心方法",
+  "messages": [
+    {
+      "id": "bf6cac3ea65746aebafff5bc86cdc489",
+      "role": "user",
+      "text": "解释论文的核心方法",
+      "citations": [],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-14T07:56:03.856292Z"
+    },
+    {
+      "id": "4c99ba8832de40a2903cb4ef4f3d7067",
+      "role": "assistant",
+      "text": "根据论文片段，该论文的核心方法是**StkFEP（Stakeholder-Enhanced Future Event Prediction Framework，利益相关者增强的未来事件预测框架）**。该方法专为开放式的未来事件预测（OpenEP）任务设计，主要包含两个关键步骤：\n\n1. **提取利益相关者以扩展问题**：通过识别事件中涉及的利益相关者（stakeholders），对原始预测问题进行扩展，从而收集更丰富、更多样化的信息【第1页】。\n2. **收集历史相关事件**：搜集与预测问题相关且相似的历史事件，以揭示事件潜在的演化模式，为预测提供依据【第1页】。\n\n实验结果表明，在开放设定下，现有的大语言模型（LLMs）难以准确预测未来事件，而StkFEP框架正是为了应对这一挑战而提出的【第1页】。",
+      "citations": [
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m36",
+          "page": 3,
+          "quote": "[表格] Figure 2: Example from the OpenEPBench dataset.\nField | Content | Hot Topic | 总理访问澳大利亚期间宣布对澳大利亚实施单方面免签政策。[Whilevisiting Australia, Premier announced that China will implement ",
+          "kind": "table",
+          "resource_url": "/media/assets/ada6c730e07a4a459f4810a3ec66017f/ada6c730e07a4a459f4810a3ec66017f-2408.06578v2/auto/images/3e3692b727b61b8cf08df778aaefbcc2eccd986bca116738b522b12adf46fea3.jpg",
+          "bbox": [
+            84.0,
+            102.0,
+            478.0,
+            343.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m1",
+          "page": 1,
+          "quote": "OpenEP: Open-Ended Future Event Prediction",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            200.0,
+            101.0,
+            795.0,
+            126.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m2",
+          "page": 1,
+          "quote": "Yong Guan Tsinghua University Beijing, China gy2022@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            129.0,
+            137.0,
+            333.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m3",
+          "page": 1,
+          "quote": "Hao Peng Tsinghua University Beijing, China peng-21@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            393.0,
+            137.0,
+            606.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m4",
+          "page": 1,
+          "quote": "Lei Hou Tsinghua University Beijing, China houlei@tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            281.0,
+            210.0,
+            447.0,
+            272.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m5",
+          "page": 1,
+          "quote": "Xiaozhi Wang Tsinghua University Beijing, China wangxz20@mail.tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            655.0,
+            137.0,
+            879.0,
+            199.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m6",
+          "page": 1,
+          "quote": "Juanzi Li Tsinghua University Beijing, China lijuanzi@tsinghua.edu.cn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            545.0,
+            210.0,
+            720.0,
+            272.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m7",
+          "page": 1,
+          "quote": "Abstract",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            281.0,
+            158.0,
+            296.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m8",
+          "page": 1,
+          "quote": "Future event prediction (FEP) is a long-standing and crucial task in the world, as understanding the evolution of events enables early risk identification, informed decision-making",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            81.0,
+            299.0,
+            483.0,
+            732.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m9",
+          "page": 1,
+          "quote": "CCS Concepts",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            742.0,
+            202.0,
+            757.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m10",
+          "page": 1,
+          "quote": "• Computing methodologies → Information extraction.",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            761.0,
+            454.0,
+            775.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m11",
+          "page": 1,
+          "quote": "ACM Reference Format:",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            781.0,
+            230.0,
+            792.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m12",
+          "page": 1,
+          "quote": "Yong Guan, Hao Peng, Xiaozhi Wang, Lei Hou, and Juanzi Li. 2024. OpenEP: Open-Ended Future Event Prediction. In . ACM, New York, NY, USA, 13 pages. https://doi.org/10.1145/nnnn.nnn",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            83.0,
+            791.0,
+            483.0,
+            833.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m14",
+          "page": 1,
+          "quote": "1 Introduction",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            516.0,
+            503.0,
+            650.0,
+            517.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m15",
+          "page": 1,
+          "quote": "Future event prediction (FEP) aims to predict the potential future outcomes based on the historical events and the precursors [33]. In Figure 1, given the predictive question “Whic",
+          "kind": "text",
+          "resource_url": null,
+          "bbox": [
+            513.0,
+            522.0,
+            915.0,
+            703.0
+          ]
+        }
+      ],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-14T07:56:03.856292Z"
+    }
+  ],
+  "created_at": "2026-07-14T07:55:51.143257Z",
+  "updated_at": "2026-07-14T07:56:03.856292Z"
+}

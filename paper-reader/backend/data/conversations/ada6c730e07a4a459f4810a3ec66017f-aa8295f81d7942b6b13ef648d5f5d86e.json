@@ -1,0 +1,80 @@
+{
+  "id": "aa8295f81d7942b6b13ef648d5f5d86e",
+  "paper_id": "ada6c730e07a4a459f4810a3ec66017f",
+  "title": "比特币的价格是多少？",
+  "messages": [
+    {
+      "id": "e24ba77dba1c4fe48897ec4ed81df137",
+      "role": "user",
+      "text": "比特币的价格是多少？",
+      "citations": [],
+      "videos": [],
+      "evidence_sufficient": true,
+      "created_at": "2026-07-14T07:56:24.389209Z"
+    },
+    {
+      "id": "d3018311bfd64dc0abf41375cd54c7cb",
+      "role": "assistant",
+      "text": "当前论文证据不足，无法回答该问题。论文中未包含与您问题直接相关的信息。\n建议尝试以下方式：\n1. 换一种更具体的提问方式\n2. 查阅论文其他章节\n3. 确认问题涉及的概念是否在论文中出现",
+      "citations": [
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m36",
+          "page": 3,
+          "quote": "[表格] Figure 2: Example from the OpenEPBench dataset.\nField | Content | Hot Topic | 总理访问澳大利亚期间宣布对澳大利亚实施单方面免签政策。[Whilevisiting Australia, Premier announced that China will implement ",
+          "kind": "table",
+          "resource_url": "/media/assets/ada6c730e07a4a459f4810a3ec66017f/ada6c730e07a4a459f4810a3ec66017f-2408.06578v2/auto/images/3e3692b727b61b8cf08df778aaefbcc2eccd986bca116738b522b12adf46fea3.jpg",
+          "bbox": [
+            84.0,
+            102.0,
+            478.0,
+            343.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m97",
+          "page": 6,
+          "quote": "[表格] Table 1: Model performance of different types of questions on Chinese data (%). Detailed experimental results for each dimension can be found in the appendix B.\nModels | Metho",
+          "kind": "table",
+          "resource_url": "/media/assets/ada6c730e07a4a459f4810a3ec66017f/ada6c730e07a4a459f4810a3ec66017f-2408.06578v2/auto/images/4ff7f0cbe0f53c9aeb9c74a315be5d6d58124b2f8be05a55f963542d20cd6f96.jpg",
+          "bbox": [
+            112.0,
+            147.0,
+            879.0,
+            351.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m115",
+          "page": 7,
+          "quote": "[表格] Table 2: Model performance of different types of questions on English data (%).\nModels | Methods | Time | Location | Development | Outcome | Impact | Response | Other | Overal",
+          "kind": "table",
+          "resource_url": "/media/assets/ada6c730e07a4a459f4810a3ec66017f/ada6c730e07a4a459f4810a3ec66017f-2408.06578v2/auto/images/3b2d12a498d98c3a298ab1063928866e517643e6742f1dcf62138f81259bf59d.jpg",
+          "bbox": [
+            112.0,
+            132.0,
+            879.0,
+            398.0
+          ]
+        },
+        {
+          "chunk_id": "ada6c730e07a4a459f4810a3ec66017f-m141",
+          "page": 8,
+          "quote": "[表格] Table 3: Ablation study.\nMethods | GPT-3.5 | GLM-4 | StkFEP | 46.95 | 46.27 | w/o Cluster-Summ | 46.11 | 45.38 | w/o Similar Events | 45.65 | 44.79 | w/o Stakeholders | 44.28 ",
+          "kind": "table",
+          "resource_url": "/media/assets/ada6c730e07a4a459f4810a3ec66017f/ada6c730e07a4a459f4810a3ec66017f-2408.06578v2/auto/images/b03b3ee388d9a7a301d99e723830aa4668bd2dc491e0b1fc05976fa43dc0e237.jpg",
+          "bbox": [
+            584.0,
+            566.0,
+            839.0,
+            650.0
+          ]
+        }
+      ],
+      "videos": [],
+      "evidence_sufficient": false,
+      "created_at": "2026-07-14T07:56:24.389209Z"
+    }
+  ],
+  "created_at": "2026-07-14T07:56:15.279869Z",
+  "updated_at": "2026-07-14T07:56:24.389209Z"
+}

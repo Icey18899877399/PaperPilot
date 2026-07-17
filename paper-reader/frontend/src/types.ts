@@ -170,6 +170,27 @@ export interface ChatResponse {
   citations: Citation[];
   videos: VideoResource[];
   agent_trace_id: string;
+  conversation_id: string;
+  evidence_sufficient: boolean;
+}
+
+export interface MessageRecord {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  citations: Citation[];
+  videos: VideoResource[];
+  evidence_sufficient: boolean;
+  created_at: string;
+}
+
+export interface Conversation {
+  id: string;
+  paper_id: string;
+  title: string;
+  messages: MessageRecord[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ModelStatus {

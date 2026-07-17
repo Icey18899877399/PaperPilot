@@ -1,7 +1,9 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 
 import { api } from "../api";
+import { useConversations } from "../hooks/useConversations";
 import type { ChatResponse, CitationTarget } from "../types";
+import { ConversationSelector } from "./ConversationSelector";
 import { VideoRecommendationCard } from "./VideoRecommendationCard";
 
 interface Message {
@@ -30,6 +32,44 @@ export function ChatPanel({ paperId, onLocate }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const {
+    conversations,
+    activeId,
+    loadList,
+    loadMessages,
+    startNew,
+    switchTo,
+    remove,
+  } = useConversations(paperId);
+
+  // ── load conversation messages when switching ──────────────────
+  const switchConversation = useCallback(
+    async (convId: string) => {
+      switchTo(convId);
+      const conv = await loadMessages(convId);
+      if (conv) {
+        setMessages(
+          conv.messages.map((msg) => ({
+            role: msg.role as "user" | "assistant",
+            text: msg.text,
+            result:
+              msg.role === "assistant"
+                ? {
+                    answer: msg.text,
+                    citations: msg.citations ?? [],
+                    videos: msg.videos ?? [],
+                    agent_trace_id: "",
+                    conversation_id: convId,
+                    evidence_sufficient: msg.evidence_sufficient ?? true,
+                  }
+                : undefined,
+          }))
+        );
+      }
+    },
+    [switchTo, loadMessages]
+  );
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const current = question.trim();
@@ -38,7 +78,11 @@ export function ChatPanel({ paperId, onLocate }: Props) {
     setMessages((items) => [...items, { role: "user", text: current }]);
     setLoading(true);
     try {
-      const result = await api.chat(paperId, current);
+      const result = await api.chat(paperId, current, activeId ?? undefined);
+      if (result.conversation_id && !activeId) {
+        switchTo(result.conversation_id);
+        void loadList(paperId);
+      }
       setMessages((items) => [
         ...items,
         { role: "assistant", text: result.answer, result }
@@ -62,6 +106,17 @@ export function ChatPanel({ paperId, onLocate }: Props) {
         </div>
         <span className="agent-status">Agent在线</span>
       </header>
+      {/* ── conversation selector ──────────────────────────────── */}
+      {paperId && conversations.length > 0 && (
+        <ConversationSelector
+          conversations={conversations}
+          activeId={activeId}
+          onNew={() => { startNew(); setMessages([]); }}
+          onSwitch={(convId) => { void switchConversation(convId); }}
+          onDelete={(convId) => { void remove(convId); if (activeId === convId) setMessages([]); }}
+        />
+      )}
+
       <div className="messages">
         {!messages.length && (
           <div className="chat-welcome">
@@ -81,6 +136,9 @@ export function ChatPanel({ paperId, onLocate }: Props) {
           <article className={`message ${message.role}`} key={index}>
             <span>{message.role === "user" ? "你" : "AI"}</span>
             <div>
+              {message.result && !message.result.evidence_sufficient && (
+                <span className="evidence-warning">⚠ 证据不足</span>
+              )}
               <p>{message.text}</p>
               {message.result?.citations.map((citation) => (
                 <div className={`citation-card ${citation.kind}`} key={citation.chunk_id}>
