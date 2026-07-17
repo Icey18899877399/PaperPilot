@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0f766e"/><stop offset="1" stop-color="#1d4ed8"/></linearGradient></defs>
+<rect width="640" height="360" rx="28" fill="url(#g)"/><circle cx="320" cy="180" r="70" fill="white" fill-opacity=".18"/>
+<path d="M300 135l90 45-90 45z" fill="white"/><text x="32" y="326" fill="white" font-family="Arial,sans-serif" font-size="28" font-weight="700">PaperPilot Learning Video</text>
+</svg>

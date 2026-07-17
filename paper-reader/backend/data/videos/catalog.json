@@ -1,0 +1,14 @@
+[
+  {
+    "id": "demo-transformer-bilibili",
+    "title": "Transformer基础讲解",
+    "description": "用于快速打开B站搜索结果，查找自注意力、编码器与解码器相关讲解。",
+    "cover_url": "/media/videos/default-video-cover.svg",
+    "source": "B站搜索",
+    "keywords": ["transformer", "attention", "注意力", "编码器", "解码器"],
+    "tags": ["B站", "课程讲解"],
+    "knowledge_points": ["Transformer", "Self-Attention"],
+    "file_url": "https://search.bilibili.com/all?keyword=Transformer+Self-Attention+%E6%95%99%E7%A8%8B",
+    "local_path": ""
+  }
+]

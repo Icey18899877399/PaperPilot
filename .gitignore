@@ -1,0 +1,48 @@
+# Secrets and machine-local configuration
+**/.env
+**/.env.local
+**/*.key
+**/*.pem
+
+# Python environments and caches
+**/.venv/
+**/venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.ruff_cache/
+
+# Frontend dependencies and generated output
+**/node_modules/
+**/dist/
+**/*.tsbuildinfo
+
+# PaperPilot runtime data
+paper-reader/dev-*.log
+paper-reader/backend/data/uploads/
+paper-reader/backend/data/assets/
+paper-reader/backend/data/indexes/
+paper-reader/backend/data/guides/
+paper-reader/backend/data/mindmaps/
+paper-reader/backend/data/logs/
+paper-reader/backend/data/papers.json
+paper-reader/backend/data/videos/*.mp4
+
+# MinerU models and generated output
+mineru-docker/home/
+mineru-docker/output/
+mineru-docker/*official*
+
+# Course input files and cloud-upload artifacts
+reference/
+.notebook/
+*.pdf
+*.docx
+*.zip
+*.baiduyun.uploading.cfg
+
+# Editors and operating system files
+**/.idea/
+**/.vscode/
+Thumbs.db
+.DS_Store

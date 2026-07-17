@@ -1,0 +1,30 @@
+services:
+  mineru-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: paper-reader-mineru:3.4.0-cpu
+    container_name: paper-reader-mineru
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      MINERU_MODEL_SOURCE: local
+      MINERU_TOOLS_CONFIG_JSON: /root/mineru.json
+      MINERU_FORMULA_ENABLE: "true"
+      MINERU_TABLE_ENABLE: "true"
+      MINERU_PROCESSING_WINDOW_SIZE: "4"
+      MINERU_API_MAX_CONCURRENT_REQUESTS: "1"
+      MINERU_INTRA_OP_NUM_THREADS: "4"
+      MINERU_INTER_OP_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "4"
+    volumes:
+      - ./home:/root
+      - ./output:/app/output
+    shm_size: "4gb"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
