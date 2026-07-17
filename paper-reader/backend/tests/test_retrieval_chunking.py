@@ -46,7 +46,20 @@ def test_retrieval_chunks_preserve_source_blocks_and_normalize_boundaries() -> N
     knowledge_base = KnowledgeBase()
     knowledge_base.index("paper-1", source)
 
-    assert knowledge_base.all_chunks("paper-1") == source
+    # 新契约：all_chunks 是装载时规范化后的展示块——孤立页码与≥3页重复的
+    # 页眉噪音在展示层即被剔除（此前只在检索层过滤），其余块原样保留
+    visible = knowledge_base.all_chunks("paper-1")
+    assert [item.chunk_id for item in visible] == [
+        "heading-method",
+        "method-a",
+        "method-b",
+        "method-long",
+        "heading-reference",
+        "reference-list",
+        "results-table",
+    ]
+    assert all(item.content.strip() != "5273" for item in visible)
+    assert all(running_header not in item.content for item in visible)
     retrieval = knowledge_base.retrieval_chunks("paper-1")
     assert retrieval
     assert all(item.metadata["parser"] == "retrieval-postprocessor" for item in retrieval)

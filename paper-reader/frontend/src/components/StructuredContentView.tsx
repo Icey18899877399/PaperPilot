@@ -20,6 +20,8 @@ const filters = [
 
 export function StructuredContentView({ paper, compact = false, onLocate }: Props) {
   const [kind, setKind] = useState("table");
+  // 默认只看正文区；开启后包含作者信息/References/Appendix 的版面块
+  const [showAll, setShowAll] = useState(false);
   const [contents, setContents] = useState<PaperContentsResponse | null>(null);
   const [selected, setSelected] = useState<PaperChunk | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,14 +39,14 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
     if (!paper || paper.status !== "ready") return;
     setLoading(true);
     setError("");
-    api.paperContents(paper.id, kind)
+    api.paperContents(paper.id, kind, showAll)
       .then((result) => {
         setContents(result);
         setSelected(compact ? null : result.items[0] ?? null);
       })
       .catch((reason) => setError((reason as Error).message))
       .finally(() => setLoading(false));
-  }, [paper?.id, paper?.status, kind, compact]);
+  }, [paper?.id, paper?.status, kind, compact, showAll]);
 
   const selectAndExplain = async (item: PaperChunk) => {
     setSelected(item);
@@ -102,6 +104,22 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
             </button>
           ))}
         </div>
+        {/* 分区过滤只作用于正文碎块，开关仅在"正文"筛选下展示 */}
+        {kind === "text" && (
+          <div className="zone-toggle-row">
+            <label className="zone-toggle">
+              <input
+                type="checkbox"
+                checked={showAll}
+                onChange={(event) => setShowAll(event.target.checked)}
+              />
+              显示全部（含作者信息、References、Appendix）
+            </label>
+            {!showAll && (contents?.hidden ?? 0) > 0 && (
+              <span className="zone-hidden-hint">已隐藏 {contents!.hidden} 条非正文切片</span>
+            )}
+          </div>
+        )}
         {error && <div className="inline-error">{error}</div>}
         <div className="workspace-chunk-list">
           {loading && <p className="empty-copy">正在读取结构化内容…</p>}
@@ -132,8 +150,10 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
                 {item.resource_url && (
                   <img src={item.resource_url} alt={`第${item.page}页${label}`} />
                 )}
+                {/* 公式有渲染图时不再显示原始LaTeX（LaTeX数据仍在后端，供AI解析与检索）；
+                    无图时保留LaTeX兜底，避免卡片空白 */}
                 {item.kind === "equation"
-                  ? <pre>{latex || item.content}</pre>
+                  ? !item.resource_url && <pre>{latex || item.content}</pre>
                   : item.kind !== "table" && <p>{item.content}</p>}
                 {selected?.chunk_id === item.chunk_id && (
                   <div className="chunk-ai-explanation">
@@ -157,7 +177,11 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
             );
           })}
           {!loading && contents && !contents.items.length && (
-            <p className="empty-copy">该论文没有识别到此类内容。</p>
+            <p className="empty-copy">
+              {(contents.hidden ?? 0) > 0
+                ? `有 ${contents.hidden} 条该类型切片位于作者/References/Appendix区，勾选"显示全部"查看。`
+                : "该论文没有识别到此类内容。"}
+            </p>
           )}
         </div>
       </section>
@@ -189,6 +213,22 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
               </button>
             ))}
           </div>
+          {/* 分区过滤只作用于正文碎块，开关仅在"正文"筛选下展示 */}
+          {kind === "text" && (
+            <div className="zone-toggle-row">
+              <label className="zone-toggle">
+                <input
+                  type="checkbox"
+                  checked={showAll}
+                  onChange={(event) => setShowAll(event.target.checked)}
+                />
+                显示全部（含作者信息、References、Appendix）
+              </label>
+              {!showAll && (contents?.hidden ?? 0) > 0 && (
+                <span className="zone-hidden-hint">已隐藏 {contents!.hidden} 条非正文切片</span>
+              )}
+            </div>
+          )}
           {error && <div className="error-banner">{error}</div>}
           <div className="chunk-compare-shell">
             <aside className="chunk-pane">
@@ -216,13 +256,17 @@ export function StructuredContentView({ paper, compact = false, onLocate }: Prop
                       </header>
                       {item.resource_url && <img src={item.resource_url} alt={`第${item.page}页${label}`} />}
                       {item.kind === "equation"
-                        ? <pre>{latex || item.content}</pre>
+                        ? !item.resource_url && <pre>{latex || item.content}</pre>
                         : item.kind !== "table" && <p>{item.content}</p>}
                     </button>
                   );
                 })}
                 {!loading && contents && !contents.items.length && (
-                  <p className="empty-copy">该论文没有识别到此类内容。</p>
+                  <p className="empty-copy">
+                    {(contents.hidden ?? 0) > 0
+                      ? `有 ${contents.hidden} 条该类型切片位于作者/References/Appendix区，勾选"显示全部"查看。`
+                      : "该论文没有识别到此类内容。"}
+                  </p>
                 )}
               </div>
             </aside>

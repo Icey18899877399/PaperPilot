@@ -53,6 +53,8 @@ class Citation(BaseModel):
     page: int
     quote: str
     kind: str = "text"
+    # US-05：证据标签把章节与摘录分离，避免前端从“章节：...”正文中猜测结构。
+    section: str = ""
     resource_url: str | None = None
     bbox: list[float] | None = None
 
@@ -62,6 +64,8 @@ class PaperContentsResponse(BaseModel):
     total: int
     counts: dict[str, int]
     items: list[PaperChunk]
+    # 默认视图下被隐藏的作者区/参考文献/附录切片数（include_all=true 时为0）
+    hidden: int = 0
 
 
 class ChunkExplanationResponse(BaseModel):
@@ -72,13 +76,69 @@ class ChunkExplanationResponse(BaseModel):
     agent_trace_id: str
 
 
+class GuideCitation(BaseModel):
+    """导读结论的原文出处（US-02：主要结论附带章节名称或页码并支持跳转）。"""
+
+    section: str = ""
+    page: int | None = None
+
+
+class GuideSection(BaseModel):
+    """导读单项内容；论文未提及时content为"原文未说明"（US-02验收标准）。"""
+
+    content: str = "原文未说明"
+    citations: list[GuideCitation] = Field(default_factory=list)
+
+
 class GuideResponse(BaseModel):
     paper_id: str
     title: str
     overview: str
     key_points: list[str]
     reading_questions: list[str]
+    # US-02九项结构化导读；带默认值以兼容历史缓存的旧版导读JSON
+    one_liner: str = ""
+    background: GuideSection = Field(default_factory=GuideSection)
+    research_question: GuideSection = Field(default_factory=GuideSection)
+    method: GuideSection = Field(default_factory=GuideSection)
+    experiment: GuideSection = Field(default_factory=GuideSection)
+    results: GuideSection = Field(default_factory=GuideSection)
+    innovations: GuideSection = Field(default_factory=GuideSection)
+    limitations: GuideSection = Field(default_factory=GuideSection)
+    keywords: list[str] = Field(default_factory=list)
+    # 生成方式：llm（模型生成）或 fallback（无模型/失败时的提取式降级）
+    generator: str = "llm"
     agent_trace_id: str
+
+
+class GuidePromptInfo(BaseModel):
+    """导读提示词版本信息（供前端"导读风格"下拉框展示）。"""
+
+    key: str
+    name: str
+    domain: str
+    audience: str
+    description: str
+    is_default: bool = False
+
+
+class RetrievalHit(BaseModel):
+    """检索调试接口的召回条目（US-04：检索测试展示召回片段及相关度）。"""
+
+    chunk_id: str
+    page: int
+    kind: str
+    score: float
+    section_path: list[str] = Field(default_factory=list)
+    excerpt: str
+
+
+class RetrievalDebugResponse(BaseModel):
+    paper_id: str
+    query: str
+    vector_backend: str
+    total_indexed: int
+    items: list[RetrievalHit]
 
 
 class MindMapSubBranch(BaseModel):

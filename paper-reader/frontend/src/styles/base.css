@@ -1,0 +1,118 @@
+:root {
+  /* NotebookLM式基础令牌：浅底、克制蓝、低饱和语义色。 */
+  --accent: #4169d8;
+  --accent-deep: #2f4f9f;
+  --accent-light: #7190e6;
+  --accent-soft: #eaf0ff;
+  --accent-border: #cad7f7;
+  --text-primary: #1d2027;
+  --text-secondary: #505866;
+  --text-muted: #8a93a3;
+  --surface-page: #f1f4fc;
+  --surface-card: #ffffff;
+  --surface-subtle: #f7f9fd;
+  --surface-hover: #f2f5fb;
+  --border: #e0e5ef;
+  --border-strong: #ccd4e1;
+  --success: #176b55;
+  --success-soft: #e6f4ee;
+  --warning: #8a5a00;
+  --warning-soft: #fff4df;
+  --danger: #b3362c;
+  --danger-soft: #fdecea;
+  --radius-s: 10px;
+  --radius-m: 14px;
+  --radius-l: 20px;
+  --shadow-card: 0 2px 12px rgb(32 43 67 / 6%);
+  --shadow-pop: 0 10px 30px rgb(32 43 67 / 13%);
+  --shadow-hover: 0 8px 24px rgb(32 43 67 / 10%);
+  --standalone-content-max: 1680px;
+  --font-ui: Inter, "Noto Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  --font-reading: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, serif;
+  --font-academic: "STKaiti", "KaiTi", "Noto Serif SC", serif;
+  --motion-fast: 140ms;
+  --motion-base: 190ms;
+  --motion-slow: 260ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --transition-fast: var(--motion-fast) var(--ease-standard);
+
+  color: var(--text-primary);
+  background: var(--surface-page);
+  font-family: var(--font-ui);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--surface-page);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+textarea,
+select,
+input { font: inherit; }
+
+button {
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+button:not(:disabled):active { transform: scale(0.985); }
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+:focus-visible {
+  outline: 3px solid rgb(65 105 216 / 22%);
+  outline-offset: 2px;
+  border-radius: var(--radius-s);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c6cfdd;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover { background: #aab6c9; }
+::-webkit-scrollbar-track { background: transparent; }
+
+.view-loading {
+  min-height: calc(100vh - 68px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-muted);
+  background: var(--surface-page);
+  font-size: 13px;
+}
+
+.view-loading span {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent-border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: view-loading-spin 0.8s linear infinite;
+}
+
+@keyframes view-loading-spin { to { transform: rotate(360deg); } }

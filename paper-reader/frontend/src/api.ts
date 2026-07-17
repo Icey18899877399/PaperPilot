@@ -4,6 +4,7 @@ import type {
   ChunkExplanation,
   ChatResponse,
   Guide,
+  GuidePromptInfo,
   LearningResourceType,
   LearningSearchResponse,
   MindMap,
@@ -13,9 +14,25 @@ import type {
   VideoResource,
   VideoUpdatePayload
 } from "./types";
+import { postEventStream, type StreamHandlers } from "./services/sse";
+
+// 默认120秒超时：覆盖导读/解析等长耗时LLM请求，同时避免请求悬挂无反馈
+const REQUEST_TIMEOUT_MS = 120_000;
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, options);
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(url, { ...options, signal: controller.signal });
+  } catch (reason) {
+    if ((reason as Error).name === "AbortError") {
+      throw new Error("请求超时，请检查后端服务后重试");
+    }
+    throw new Error("网络请求失败，请确认后端服务已启动");
+  } finally {
+    window.clearTimeout(timer);
+  }
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
     throw new Error(payload?.detail ?? `请求失败：${response.status}`);
@@ -46,8 +63,28 @@ export const api = {
     return response.json() as Promise<Guide>;
   },
 
-  createGuide: (paperId: string, refresh = false) =>
-    request<Guide>(`/api/papers/${paperId}/guide?refresh=${refresh}`, { method: "POST" }),
+  createGuide: (paperId: string, refresh = false, promptKey?: string) =>
+    request<Guide>(
+      `/api/papers/${paperId}/guide?refresh=${refresh}` +
+        (promptKey ? `&prompt_key=${encodeURIComponent(promptKey)}` : ""),
+      { method: "POST" },
+    ),
+
+  streamGuide: (
+    paperId: string,
+    refresh: boolean,
+    promptKey: string | undefined,
+    handlers: StreamHandlers<Guide>,
+    signal?: AbortSignal,
+  ) => postEventStream<Guide>(
+    `/api/papers/${paperId}/guide/stream?refresh=${refresh}`
+      + (promptKey ? `&prompt_key=${encodeURIComponent(promptKey)}` : ""),
+    {},
+    handlers,
+    signal,
+  ),
+
+  guidePrompts: () => request<GuidePromptInfo[]>("/api/models/guide-prompts"),
 
   retryPaper: (paperId: string) =>
     request<Paper>(`/api/papers/${paperId}/retry?background=true`, { method: "POST" }),
@@ -76,9 +113,9 @@ export const api = {
     }
   },
 
-  paperContents: (paperId: string, kind: string) =>
+  paperContents: (paperId: string, kind: string, includeAll = false) =>
     request<PaperContentsResponse>(
-      `/api/papers/${paperId}/contents?kind=${encodeURIComponent(kind)}`
+      `/api/papers/${paperId}/contents?kind=${encodeURIComponent(kind)}&include_all=${includeAll}`
     ),
 
   explainChunk: (paperId: string, chunkId: string) =>
@@ -93,6 +130,18 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ paper_id: paperId, question })
     }),
+
+  streamChat: (
+    paperId: string,
+    question: string,
+    handlers: StreamHandlers<ChatResponse>,
+    signal?: AbortSignal,
+  ) => postEventStream<ChatResponse>(
+    "/api/chat/stream",
+    { paper_id: paperId, question },
+    handlers,
+    signal,
+  ),
 
   translate: (paperId: string, text: string) =>
     request<{ translated_text: string }>(`/api/papers/${paperId}/translate`, {

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 import httpx
@@ -91,14 +92,115 @@ class LLMClient:
         payload["response_format"] = {"type": "json_object"}
         data = await self._post(payload)
         content = data["choices"][0]["message"].get("content") or ""
-        cleaned = re.sub(r"^\s*```(?:json)?|\s*```\s*$", "", content.strip())
-        try:
-            result = json.loads(cleaned)
-        except json.JSONDecodeError as exc:
-            raise LLMServiceError("模型返回内容不是有效JSON") from exc
-        if not isinstance(result, dict):
-            raise LLMServiceError("模型返回JSON必须是对象")
+        result = self._parse_json_object(content)
+        if result is None:
+            raise LLMServiceError("模型返回内容不是有效JSON")
         return result
+
+    async def complete_stream(
+        self,
+        system: str,
+        user: str,
+        max_tokens: int = 1600,
+    ) -> AsyncIterator[str]:
+        """按OpenAI兼容SSE协议逐段返回模型正文。
+
+        用于聊天的真实流式输出；调用方取消请求时，httpx上下文会一并关闭上游
+        连接，避免用户切换论文后模型仍在后台持续消耗额度。
+        """
+        if not self.enabled:
+            return
+        payload = self._payload(system, user, max_tokens=max_tokens)
+        payload["stream"] = True
+        url = (
+            self.settings.effective_llm_base_url.rstrip("/")
+            + "/chat/completions"
+        )
+        headers = {
+            "Authorization": f"Bearer {self.settings.effective_llm_api_key}",
+            "Content-Type": "application/json",
+        }
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(120, connect=20),
+                transport=self.transport,
+            ) as client:
+                async with client.stream(
+                    "POST",
+                    url,
+                    headers=headers,
+                    json=payload,
+                ) as response:
+                    if response.is_error:
+                        await response.aread()
+                        message = self._response_error(response)
+                        raise LLMServiceError(
+                            f"模型服务请求失败（HTTP {response.status_code}）：{message}"
+                        )
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data:"):
+                            continue
+                        raw = line[5:].strip()
+                        if not raw or raw == "[DONE]":
+                            continue
+                        try:
+                            data = json.loads(raw)
+                            delta = data["choices"][0].get("delta", {}).get("content")
+                        except (json.JSONDecodeError, KeyError, TypeError, IndexError):
+                            continue
+                        if isinstance(delta, str) and delta:
+                            yield delta
+        except httpx.TimeoutException as exc:
+            raise LLMServiceError("模型服务请求超时") from exc
+        except httpx.RequestError as exc:
+            raise LLMServiceError("无法连接模型服务，请检查网络和BASE_URL") from exc
+
+    async def complete_json_stream(
+        self,
+        system: str,
+        user: str,
+        max_tokens: int = 1600,
+        on_delta: Callable[[str], Awaitable[None]] | None = None,
+    ) -> dict[str, Any] | None:
+        """流式接收严格JSON，并把增量交给进度通道，最终只返回完整对象。"""
+        if not self.enabled:
+            return None
+        parts: list[str] = []
+        async for delta in self.complete_stream(system, user, max_tokens=max_tokens):
+            parts.append(delta)
+            if on_delta is not None:
+                await on_delta(delta)
+        result = self._parse_json_object("".join(parts))
+        if result is None:
+            raise LLMServiceError("模型返回内容不是有效JSON")
+        return result
+
+    @staticmethod
+    def _parse_json_object(content: str) -> dict[str, Any] | None:
+        """稳健解析模型返回的JSON对象。
+
+        即便开启了json_object模式，模型仍会偶发地包裹Markdown代码块、在JSON
+        前后夹带说明文字。先按原样解析，失败后剥离代码围栏，再退回到截取最外层
+        花括号子串重试，尽量避免因一次格式抖动就把整篇导读打成降级模式。
+        """
+        text = content.strip()
+        candidates = [text]
+        stripped = re.sub(r"^```(?:json)?\s*", "", text)
+        stripped = re.sub(r"\s*```$", "", stripped).strip()
+        if stripped != text:
+            candidates.append(stripped)
+        start = stripped.find("{")
+        end = stripped.rfind("}")
+        if start != -1 and end > start:
+            candidates.append(stripped[start : end + 1])
+        for candidate in candidates:
+            try:
+                parsed = json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(parsed, dict):
+                return parsed
+        return None
 
     def _payload(
         self,

@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from "react";
 
 import { api } from "../api";
 import type { VideoResource, VideoUpdatePayload } from "../types";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface Props {
   videos: VideoResource[];
@@ -39,6 +40,9 @@ export function VideoLibrary({ videos, loading, onChanged, embedded = false }: P
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<VideoResource | null>(null);
+  const [alsoDeleteFile, setAlsoDeleteFile] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [formVersion, setFormVersion] = useState(0);
@@ -121,20 +125,21 @@ export function VideoLibrary({ videos, loading, onChanged, embedded = false }: P
     }
   };
 
-  const remove = async (video: VideoResource) => {
-    const confirmed = window.confirm(`确定删除视频资源“${video.title}”吗？`);
-    if (!confirmed) return;
-    const deleteFile = window.confirm(
-      "是否同时删除后端本地MP4文件？\n确定：删除记录和本地文件；取消：仅删除目录记录，保留文件。"
-    );
+  const confirmRemove = async () => {
+    const video = pendingRemove;
+    if (!video) return;
+    setRemoving(true);
     setError("");
     try {
-      await api.deleteVideo(video.id, deleteFile);
+      await api.deleteVideo(video.id, alsoDeleteFile);
       if (editingId === video.id) reset();
       if (previewId === video.id) setPreviewId(null);
+      setPendingRemove(null);
       await onChanged();
     } catch (reason) {
       setError((reason as Error).message);
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -231,7 +236,14 @@ export function VideoLibrary({ videos, loading, onChanged, embedded = false }: P
                     {previewId === video.id ? "收起预览" : "预览播放"}
                   </button>
                   <button type="button" onClick={() => beginEdit(video)}>编辑</button>
-                  <button type="button" className="danger-action" onClick={() => void remove(video)}>删除</button>
+                  <button
+                    type="button"
+                    className="danger-action"
+                    onClick={() => {
+                      setAlsoDeleteFile(false);
+                      setPendingRemove(video);
+                    }}
+                  >删除</button>
                 </div>
               </div>
               {previewId === video.id && (
@@ -247,6 +259,28 @@ export function VideoLibrary({ videos, loading, onChanged, embedded = false }: P
       {!loading && !videos.length && (
         <p className="empty-copy">视频目录为空，请使用上方表单上传或登记MP4资源。</p>
       )}
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        title={`删除视频「${pendingRemove?.title ?? ""}」？`}
+        body={
+          <>
+            <p style={{ margin: 0 }}>删除后聊天推荐将不再出现该视频。</p>
+            <label>
+              <input
+                type="checkbox"
+                checked={alsoDeleteFile}
+                onChange={(event) => setAlsoDeleteFile(event.target.checked)}
+              />
+              同时删除后端本地 MP4 文件（不勾选则仅移除目录记录）
+            </label>
+          </>
+        }
+        confirmText="删除"
+        danger
+        busy={removing}
+        onConfirm={() => void confirmRemove()}
+        onCancel={() => setPendingRemove(null)}
+      />
     </section>
   );
 }
