@@ -8,6 +8,7 @@ interface Props {
 
 export function VideoRecommendationCard({ video }: Props) {
   const [playing, setPlaying] = useState(false);
+  const isDemoVideo = video.file_url.startsWith("demo://");
 
   return (
     <article className="video-recommendation-card">
@@ -37,10 +38,14 @@ export function VideoRecommendationCard({ video }: Props) {
         </button>
       </div>
       {playing && (
-        <video className="recommended-video-player" controls autoPlay preload="metadata">
-          <source src={video.file_url} type="video/mp4" />
-          当前浏览器不支持视频播放。
-        </video>
+        isDemoVideo ? (
+          <div className="demo-video-placeholder"><span>▶</span><strong>演示视频资源</strong><small>完整部署后可在网页内播放视频。</small></div>
+        ) : (
+          <video className="recommended-video-player" controls autoPlay preload="metadata">
+            <source src={video.file_url} type="video/mp4" />
+            当前浏览器不支持视频播放。
+          </video>
+        )
       )}
     </article>
   );

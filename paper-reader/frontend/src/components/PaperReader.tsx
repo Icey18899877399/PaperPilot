@@ -3,6 +3,7 @@ import { Document, Page, pdfjs } from "react-pdf";
 
 import { api } from "../api";
 import type { CitationTarget, Paper } from "../types";
+import { DemoPaperPage } from "./DemoPaperPage";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "../../node_modules/react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
@@ -279,6 +280,35 @@ export function PaperReader({
         <h2>选择一篇论文开始阅读</h2>
         <p>上传后可查看原文、生成导读并进行溯源问答。</p>
       </div>
+    );
+  }
+
+  if (paper.file_url.startsWith("demo://")) {
+    return (
+      <section className="reader">
+        <header className="reader-toolbar">
+          <div className="reader-document-meta">
+            <strong>{paper.filename}</strong>
+            <span>{paper.page_count} 页 · 演示预览</span>
+          </div>
+          <div className="reader-tools">
+            <div className="page-control">
+              <button disabled={page <= 1} onClick={() => setPage((value) => value - 1)} aria-label="上一页">‹</button>
+              <span>{page} / {paper.page_count} 页</span>
+              <button disabled={page >= paper.page_count} onClick={() => setPage((value) => value + 1)} aria-label="下一页">›</button>
+            </div>
+            <span className="demo-reader-label">静态论文示例</span>
+          </div>
+        </header>
+        <div className="pdf-canvas demo-pdf-canvas" ref={pdfCanvasRef}>
+          <DemoPaperPage
+            page={page}
+            pageCount={paper.page_count}
+            width={Math.min(renderedPageWidth, 720)}
+            highlighted={targetCitation?.page === page}
+          />
+        </div>
+      </section>
     );
   }
 

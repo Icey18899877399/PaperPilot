@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { api } from "./api";
+import { api, isDemoMode } from "./api";
 import { BilingualReader } from "./components/BilingualReader";
 import { ChatPanel } from "./components/ChatPanel";
 import { ConfirmDialog } from "./components/ConfirmDialog";
@@ -197,6 +197,9 @@ export default function App() {
   useEffect(() => {
     api.listPapers().then((items) => {
       setPapers(items);
+      if (isDemoMode) {
+        setPaper(items.find((item) => item.status === "ready") ?? null);
+      }
       items.filter((item) => item.status === "parsing")
         .forEach((item) => void monitorPaper(item.id));
     }).catch(() => {
@@ -352,7 +355,7 @@ export default function App() {
   };
 
   return (
-    <main className="app-shell">
+    <main className={isDemoMode ? "app-shell demo-mode" : "app-shell"}>
       <header className="topbar">
         <div className="brand-mark"><BrandIcon /></div>
         <div className="brand-copy">
@@ -403,6 +406,14 @@ export default function App() {
           </span>
         </nav>
       </header>
+
+      {isDemoMode && (
+        <div className="demo-banner">
+          <strong>GitHub Pages 交互演示</strong>
+          <span>当前使用浏览器内置示例数据；上传、问答和翻译不会发送到服务器。</span>
+          <a href="https://github.com/Icey18899877399/PaperPilot">查看源码</a>
+        </div>
+      )}
 
       <ToastStack toasts={toasts} onClose={dismissToast} />
 

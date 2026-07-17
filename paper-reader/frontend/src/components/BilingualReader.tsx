@@ -3,6 +3,7 @@ import { Document, Page, pdfjs } from "react-pdf";
 
 import { api } from "../api";
 import type { BilingualBlock, BilingualPage, Paper } from "../types";
+import { DemoPaperPage } from "./DemoPaperPage";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "../../node_modules/react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
@@ -373,26 +374,30 @@ export function BilingualReader({
           onMouseUp={selectText}
         >
           <div className="sheet-language"><span>EN</span> 英文原文</div>
-          <Document
-            file={paper.file_url}
-            onLoadSuccess={({ numPages }) => {
-              setPageCount(numPages);
-              setPage((value) => Math.min(value, numPages));
-            }}
-            loading={<p className="sheet-status">正在加载英文原文…</p>}
-            error={<p className="sheet-status">PDF 加载失败。</p>}
-          >
-            <Page
-              pageNumber={page}
-              width={PAGE_WIDTH}
-              renderTextLayer
-              renderAnnotationLayer={false}
-              onLoadSuccess={(loadedPage) => {
-                const viewport = loadedPage.getViewport({ scale: 1 });
-                setPageSize({ width: viewport.width, height: viewport.height });
+          {paper.file_url.startsWith("demo://") ? (
+            <DemoPaperPage page={page} pageCount={paper.page_count} width={PAGE_WIDTH - 56} />
+          ) : (
+            <Document
+              file={paper.file_url}
+              onLoadSuccess={({ numPages }) => {
+                setPageCount(numPages);
+                setPage((value) => Math.min(value, numPages));
               }}
-            />
-          </Document>
+              loading={<p className="sheet-status">正在加载英文原文…</p>}
+              error={<p className="sheet-status">PDF 加载失败。</p>}
+            >
+              <Page
+                pageNumber={page}
+                width={PAGE_WIDTH}
+                renderTextLayer
+                renderAnnotationLayer={false}
+                onLoadSuccess={(loadedPage) => {
+                  const viewport = loadedPage.getViewport({ scale: 1 });
+                  setPageSize({ width: viewport.width, height: viewport.height });
+                }}
+              />
+            </Document>
+          )}
           {selectionHighlights.map((selectionHighlight, index) => (
             <div
               className="selected-text-highlight"

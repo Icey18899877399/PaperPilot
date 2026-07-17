@@ -41,6 +41,18 @@
 
 4. 打开 `http://localhost:5173`，后端接口文档位于 `http://localhost:8000/docs`。
 
+## GitHub Pages 在线演示
+
+仓库包含 `.github/workflows/deploy-pages.yml`。推送到 `main` 后，GitHub Actions 会构建不依赖后端的交互演示版。
+
+首次启用时，在 GitHub 仓库进入 `Settings` → `Pages`，将 `Build and deployment` 下的 `Source` 设为 `GitHub Actions`。部署完成后访问：
+
+`https://icey18899877399.github.io/PaperPilot/`
+
+Pages 版本使用浏览器内置示例数据，可体验结构化导读、双语阅读、思维导图、流式问答与引用定位、Agent 日志、视频资源和拓展学习。选择本地 PDF 只生成浏览器内的演示记录，不会上传文件。
+
+普通 `npm run dev` 和 `npm run build` 仍连接真实 FastAPI 后端。如需部署完整功能，可设置 `VITE_API_BASE_URL` 指向单独部署的后端，并在后端允许 Pages 域名跨域访问。
+
 ## 当前骨架与后续实现
 
 当前代码已经使用课程参考论文跑通核心闭环，并支持论文元数据与切片索引持久化。接入真实模型、MinerU服务和向量数据库后，可逐步替换开发回退实现，不需要改变前端主要接口。

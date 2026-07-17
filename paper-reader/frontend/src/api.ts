@@ -14,7 +14,12 @@ import type {
   VideoResource,
   VideoUpdatePayload
 } from "./types";
+import { demoApi } from "./demo-api";
 import { postEventStream, type StreamHandlers } from "./services/sse";
+
+export const isDemoMode = import.meta.env.VITE_DEMO_MODE === "true";
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+const apiUrl = (path: string) => `${apiBaseUrl}${path}`;
 
 // 默认120秒超时：覆盖导读/解析等长耗时LLM请求，同时避免请求悬挂无反馈
 const REQUEST_TIMEOUT_MS = 120_000;
@@ -24,7 +29,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetch(url, { ...options, signal: controller.signal });
+    response = await fetch(apiUrl(url), { ...options, signal: controller.signal });
   } catch (reason) {
     if ((reason as Error).name === "AbortError") {
       throw new Error("请求超时，请检查后端服务后重试");
@@ -40,7 +45,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export const api = {
+const liveApi = {
   modelStatus: () => request<ModelStatus>("/api/models/status"),
 
   listPapers: () => request<Paper[]>("/api/papers"),
@@ -54,7 +59,7 @@ export const api = {
   },
 
   cachedGuide: async (paperId: string) => {
-    const response = await fetch(`/api/papers/${paperId}/guide`);
+    const response = await fetch(apiUrl(`/api/papers/${paperId}/guide`));
     if (response.status === 404) return null;
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
@@ -77,8 +82,9 @@ export const api = {
     handlers: StreamHandlers<Guide>,
     signal?: AbortSignal,
   ) => postEventStream<Guide>(
-    `/api/papers/${paperId}/guide/stream?refresh=${refresh}`
+    apiUrl(`/api/papers/${paperId}/guide/stream?refresh=${refresh}`
       + (promptKey ? `&prompt_key=${encodeURIComponent(promptKey)}` : ""),
+    ),
     {},
     handlers,
     signal,
@@ -90,7 +96,7 @@ export const api = {
     request<Paper>(`/api/papers/${paperId}/retry?background=true`, { method: "POST" }),
 
   cachedMindMap: async (paperId: string) => {
-    const response = await fetch(`/api/papers/${paperId}/mind-map`);
+    const response = await fetch(apiUrl(`/api/papers/${paperId}/mind-map`));
     if (response.status === 404) return null;
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
@@ -106,7 +112,7 @@ export const api = {
     ),
 
   deletePaper: async (paperId: string) => {
-    const response = await fetch(`/api/papers/${paperId}`, { method: "DELETE" });
+    const response = await fetch(apiUrl(`/api/papers/${paperId}`), { method: "DELETE" });
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
       throw new Error(payload?.detail ?? `删除失败：${response.status}`);
@@ -137,7 +143,7 @@ export const api = {
     handlers: StreamHandlers<ChatResponse>,
     signal?: AbortSignal,
   ) => postEventStream<ChatResponse>(
-    "/api/chat/stream",
+    apiUrl("/api/chat/stream"),
     { paper_id: paperId, question },
     handlers,
     signal,
@@ -151,7 +157,7 @@ export const api = {
     }),
 
   cachedBilingual: async (paperId: string, page: number) => {
-    const response = await fetch(`/api/papers/${paperId}/bilingual/${page}`);
+    const response = await fetch(apiUrl(`/api/papers/${paperId}/bilingual/${page}`));
     if (response.status === 404) return null;
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
@@ -179,7 +185,7 @@ export const api = {
     }),
 
   deleteVideo: async (videoId: string, deleteFile = false) => {
-    const response = await fetch(`/api/videos/${videoId}?delete_file=${deleteFile}`, { method: "DELETE" });
+    const response = await fetch(apiUrl(`/api/videos/${videoId}?delete_file=${deleteFile}`), { method: "DELETE" });
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
       throw new Error(payload?.detail ?? `删除失败：${response.status}`);
@@ -203,3 +209,5 @@ export const api = {
   agentLogs: (limit = 100) =>
     request<AgentLog[]>(`/api/agents/logs?limit=${limit}`)
 };
+
+export const api = isDemoMode ? demoApi : liveApi;

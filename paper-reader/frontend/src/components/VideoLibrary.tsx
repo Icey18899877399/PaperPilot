@@ -247,10 +247,14 @@ export function VideoLibrary({ videos, loading, onChanged, embedded = false }: P
                 </div>
               </div>
               {previewId === video.id && (
-                <video className="video-library-player" controls autoPlay preload="metadata">
-                  <source src={video.file_url} type="video/mp4" />
-                  当前浏览器不支持视频播放。
-                </video>
+                video.file_url.startsWith("demo://") ? (
+                  <div className="demo-video-placeholder"><span>▶</span><strong>演示视频资源</strong><small>静态站点不包含本地 MP4 文件。</small></div>
+                ) : (
+                  <video className="video-library-player" controls autoPlay preload="metadata">
+                    <source src={video.file_url} type="video/mp4" />
+                    当前浏览器不支持视频播放。
+                  </video>
+                )
               )}
             </article>
           ))}

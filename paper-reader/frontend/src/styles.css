@@ -79,6 +79,139 @@
   border-bottom: 1px solid #ffc5c2;
 }
 
+.demo-banner {
+  min-height: 42px;
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #243b69;
+  background: #e9f0ff;
+  border-bottom: 1px solid #cbd9ff;
+  font-size: 13px;
+}
+
+.demo-banner strong,
+.demo-banner a {
+  color: #244ba8;
+  font-weight: 700;
+}
+
+.demo-mode .workspace,
+.demo-mode .standalone-chat-page {
+  height: calc(100vh - 110px);
+}
+
+.demo-reader-label {
+  padding: 5px 9px;
+  color: #385da7;
+  background: #e9f0ff;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.demo-pdf-canvas {
+  padding: 28px;
+}
+
+.demo-paper-sheet {
+  min-height: 820px;
+  margin: 0 auto;
+  padding: 52px 62px;
+  color: #263246;
+  background: white;
+  border: 1px solid #d8dee9;
+  box-shadow: 0 8px 28px rgb(35 48 72 / 12%);
+  font-family: Georgia, "Microsoft YaHei", serif;
+}
+
+.demo-paper-sheet > header,
+.demo-paper-sheet > footer {
+  display: flex;
+  justify-content: space-between;
+  color: #7b8493;
+  font: 11px Inter, "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-paper-sheet h1 {
+  margin: 100px 0 42px;
+  color: #172a50;
+  font-size: 32px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.demo-paper-sheet h2 {
+  margin: 64px 0 22px;
+  color: #1b315d;
+  font-size: 22px;
+}
+
+.demo-paper-sheet p {
+  margin: 0 0 18px;
+  font-size: 15px;
+  line-height: 2;
+  text-align: justify;
+}
+
+.demo-paper-sheet .demo-target-copy {
+  margin-left: -10px;
+  padding: 7px 10px;
+  background: #fff2a8;
+  border-left: 3px solid #e2b900;
+}
+
+.demo-paper-diagram {
+  margin: 48px 0 112px;
+  padding: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: #f2f6fc;
+  border: 1px solid #dce5f2;
+  border-radius: 10px;
+  font: 12px Inter, "Microsoft YaHei", sans-serif;
+}
+
+.demo-paper-diagram span {
+  padding: 8px 10px;
+  color: #274678;
+  background: white;
+  border: 1px solid #b9c9df;
+  border-radius: 7px;
+}
+
+.demo-paper-diagram i {
+  color: #6c80a0;
+  font-style: normal;
+}
+
+.demo-video-placeholder {
+  min-height: 180px;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  color: white;
+  text-align: center;
+  background: linear-gradient(145deg, #172b50, #365fd1);
+}
+
+.demo-video-placeholder > span {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  background: rgb(255 255 255 / 16%);
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 50%;
+  font-size: 20px;
+}
+
 .workspace {
   height: calc(100vh - 68px);
   display: grid;
